@@ -1,9 +1,7 @@
-// import { Hasher128, SipHasher24 } from 'siphasher';
-import { PageDigest, ValueDigest } from "./digest/wrappers"
-import { Node } from "./node"
-import { Digest } from "./digest/trait"
-import { Visitor } from "./visitor/trait"
-import { IUpsertResult, UpsertResult } from "./upsert-result"
+import { Digest, PageDigest, ValueDigest, SipHasher } from "./digest";
+import { Node } from "./node";
+import { Visitor } from "./visitor/trait";
+import { IUpsertResult, UpsertResult } from "./upsert-result";
 
 export class Page<N extends number, K> {
   level: number
@@ -91,31 +89,43 @@ export class Page<N extends number, K> {
     return this.high_page ? this.high_page.max_subtree_key() : this.max_key()
   }
 
-  maybe_generate_hash(hasher: SipHasher24): void {
+  /**
+   * Generate the page hash and cache the value, covering the nodes and the
+   * sub-tree rooted at `self`.
+   */
+  maybe_generate_hash(hasher: SipHasher): void {
     if (this.tree_hash) {
       return
     }
 
     let h = hasher
 
+    // NOTE: changing the ordering of the hashed elements is a breaking
+    // change.
+    //
+    // This order may be changed only if releasing a new major version, as
+    // it invalidates existing hashes.
+
+    // Hash all nodes & their child pages
     for (const n of this.nodes) {
-      const child_hash = n.getLtPointerMut()?.maybe_generate_hash(hasher)
-      if (child_hash) {
-        h.write(child_hash)
+      // Hash the lt child page of this node, if any
+      if (n.ltPointer) {
+        n.ltPointer.maybe_generate_hash(h)
+        h.write(n.ltPointer.hash().value.asBytes())
       }
 
-      h.write(n.getKey())
-      h.write(n.getValueHash())
+      // Hash the node value itself
+      h.write(n.getKey() as string)
+      h.write(n.getValueHash().valueOf().asBytes())
     }
 
-    const high_hash = this.high_page?.maybe_generate_hash(hasher)
-    if (high_hash) {
-      h.write(high_hash)
+    // Hash the high page, if any
+    if (this.high_page) {
+      this.high_page.maybe_generate_hash(hasher)
+      h.write(this.high_page.hash().value.asBytes())
     }
 
-    this.tree_hash = new PageDigest(
-      Digest.new(h.finish128().as_bytes(), 16).asBytes(),
-    )
+    this.tree_hash = new PageDigest(Digest.new(h.asBytes(), 16).asBytes())
   }
 
   upsert(key: K, level: number, value: ValueDigest<N>): IUpsertResult<K> {

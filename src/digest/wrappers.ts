@@ -36,6 +36,10 @@ export class PageDigest {
     return this.value
   }
 
+  clone(): PageDigest {
+    return new PageDigest(this.value.asBytes())
+  }
+
   static from(value: Digest<16>): PageDigest {
     return new PageDigest(value.valueOf() as FixedLengthArray<number, 16>)
   }
@@ -56,19 +60,3 @@ export class ValueDigest<N extends number> {
     return this.value
   }
 }
-
-// Conditional implementation for base64 formatting
-/*if (process.env.FEATURE_DIGEST_BASE64) {
-  RootHash.prototype.toString = function () {
-    return this.value.toString()
-  }
-
-  PageDigest.prototype.toString = function () {
-    return this.value.toString()
-  }
-
-  ValueDigest.prototype.toString = function () {
-    return this.value.toString()
-  }
-}*/
-
