@@ -26,16 +26,16 @@ import { Digest } from './digest';
  * key/value user input is used in a tree in order to prevent chosen-hash
  * collision attacks.
  */
-export interface Hasher<T>
+export interface Hasher
 {
   /**
    * Hash `T`, producing a unique, deterministic digest of `N` bytes length.
    */
-  hash(value: T): Digest;
+  hash(value: any): Digest;
 }
 
 // A fast, non-cryptographic hash outputting 128-bit digests.
-export class SipHasher implements Hasher<any>
+export class SipHasher implements Hasher
 {
   private hasher: Hash;
 
@@ -62,7 +62,13 @@ export class SipHasher implements Hasher<any>
   hash(value: any): Digest
   {
     const hash = this.hasher.copy();
-    hash.update(JSON.stringify(value));
+    hash.update(
+      typeof value === 'string'
+        ? value
+        : typeof value === 'number'
+          ? value.toString()
+          : JSON.stringify(value)
+    );
     const result = hash.digest().slice(0, 16);
 
     return new Digest(result);

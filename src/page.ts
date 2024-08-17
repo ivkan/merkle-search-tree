@@ -3,70 +3,43 @@ import { PageDigest, ValueDigest } from './digest/wrappers';
 import { Visitor } from './visitor/visitor';
 import { Hash } from 'crypto';
 
-// export class InsertIntermediate
-// {
-//   key: any;
-//
-//   constructor(key: any)
-//   {
-//     this.key = key;
-//   }
-// }
-//
-// export enum UpsertResult
-// {
-//   Complete           = 'Complete',
-//   InsertIntermediate = InsertIntermediate,
-// }
-
-// namespace UpsertResult {
-//   export class InsertIntermediate<K>
-//   {
-//     key: K;
-//
-//     constructor(key: K)
-//     {
-//       this.key = key;
-//     }
-//   }
-// }
-
-// export class UpsertResult<K>
-// {
-//   static Complete = 'Complete';
-// }
+export enum UpsertResult
+{
+  Complete           = 'Complete',
+  InsertIntermediate = 'InsertIntermediate',
+}
 
 export class Page<K>
 {
   level: number;
-  tree_hash: PageDigest|null;
+  treeHash: PageDigest|null;
   nodes: Node<K>[];
-  high_page: Page<K>|null;
+  highPage: Page<K>|null;
 
   constructor(level: number, nodes: Node<K>[])
   {
-    this.level     = level;
-    this.tree_hash = null;
-    this.nodes     = nodes;
-    this.high_page = null;
+    this.level    = level;
+    this.treeHash = null;
+    this.nodes    = nodes;
+    this.highPage = null;
   }
 
   hash(): PageDigest|null
   {
-    return this.tree_hash;
+    return this.treeHash;
   }
 
-  insert_high_page(p: Page<K>): void
+  insertHighPage(p: Page<K>): void
   {
-    if (this.high_page !== null || p.nodes.length === 0)
+    if (this.highPage !== null || p.nodes.length === 0)
     {
       throw new Error('Panic: high page already linked or empty nodes');
     }
-    this.tree_hash = null;
-    this.high_page = p;
+    this.treeHash = null;
+    this.highPage = p;
   }
 
-  in_order_traversal<T extends Visitor<K>>(visitor: T, high_page: boolean): boolean
+  inOrderTraversal<T extends Visitor<K>>(visitor: T, high_page: boolean): boolean
   {
     if (!visitor.visitPage(this, high_page))
     {
@@ -86,7 +59,7 @@ export class Page<K>
       return false;
     }
 
-    if (this.high_page !== null && !this.high_page.in_order_traversal(visitor, true))
+    if (this.highPage !== null && !this.highPage.inOrderTraversal(visitor, true))
     {
       return false;
     }
@@ -94,7 +67,7 @@ export class Page<K>
     return true;
   }
 
-  min_key(): K
+  minKey(): K
   {
     if (this.nodes.length === 0)
     {
@@ -103,65 +76,87 @@ export class Page<K>
     return this.nodes[0].getKey();
   }
 
-  max_key(): K
+  // maxKey(): K
+  // {
+  //   if (this.nodes.length === 0)
+  //   {
+  //     throw new Error('Panic: no nodes in this page');
+  //   }
+  //   return this.nodes[this.nodes.length - 1].getKey();
+  // }
+
+  maxKey(): K
   {
-    if (this.nodes.length === 0)
-    {
-      throw new Error('Panic: no nodes in this page');
-    }
-    return this.nodes[this.nodes.length - 1].getKey();
+    return this.nodes.length > 0
+      ? this.nodes[this.nodes.length - 1].getKey()
+      : this.highPage
+        ? this.highPage.maxKey()
+        : (null as unknown as K);
   }
 
-  min_subtree_key(): K
+  minSubtreeKey(): K
   {
     const v = this.nodes[0]?.getLtPointer();
     if (v !== undefined)
     {
-      return v.min_subtree_key();
+      return v.minSubtreeKey();
     }
-    return this.min_key();
+    return this.minKey();
   }
 
-  max_subtree_key(): K
+  maxSubtreeKey(): K
   {
-    if (this.high_page !== null)
+    if (this.highPage !== null)
     {
-      return this.high_page.max_subtree_key();
+      return this.highPage.maxSubtreeKey();
     }
-    return this.max_key();
+    return this.maxKey();
   }
 
-  maybe_generate_hash(hasher: Hash): void
+  maybeGenerateHash(hasher: Hash): void
   {
-    if (this.tree_hash !== null)
+    if (this.treeHash !== null)
     {
       return;
     }
 
-    const h = hasher.copy();
+    let h = hasher.copy();
 
+    // Hash all nodes & their child pages
     for (const n of this.nodes)
     {
-      const child_hash = n.getLtPointer()?.maybe_generate_hash(hasher)?.hash();
-      if (child_hash !== undefined)
+      // Hash the lt child page of this node, if any
+      const ltPointer = n.getLtPointer();
+      if (ltPointer !== null)
       {
-        h.write(child_hash.as_ref());
+        ltPointer.maybeGenerateHash(hasher);
+        const childHash = ltPointer.hash();
+        if (childHash !== null)
+        {
+          h.update(childHash.valueOf().asBytes());
+        }
       }
 
-      h.write(n.getKey());
-      h.write(n.getValueHash());
+      // Hash the node value itself
+      h.update(n.getKey() as string);
+      h.update(n.getValueHash().valueOf().asBytes());
     }
 
-    const high_hash = this.high_page?.maybe_generate_hash(hasher)?.hash();
-    if (high_hash !== undefined)
+    // Hash the high page, if any
+    if (this.highPage !== null)
     {
-      h.write(high_hash.as_ref());
+      this.highPage.maybeGenerateHash(hasher);
+      const highHash = this.highPage.hash();
+      if (highHash !== null)
+      {
+        h.update(highHash.valueOf().asBytes());
+      }
     }
 
-    this.tree_hash = PageDigest.new(h.digest());
+    this.treeHash = new PageDigest(h.digest());
   }
 
-  upsert(key: K, level: number, value: ValueDigest): UpsertResult<K>
+  /*upsert(key: K, level: number, value: ValueDigest): UpsertResult<K>
   {
     if (level < this.level)
     {
@@ -175,7 +170,7 @@ export class Page<K>
     }
     else if (level === this.level)
     {
-      this.upsert_node(key, value);
+      this.upsertNode(key, value);
     }
     else
     {
@@ -184,9 +179,9 @@ export class Page<K>
 
     this.tree_hash = null;
     return UpsertResult.Complete;
-  }
+  }*/
 
-  upsert_node(key: K, value: ValueDigest): void
+  /*upsertNode(key: K, value: ValueDigest): void
   {
     const idx           = this.nodes.findIndex(v => key > v.getKey());
     const page_to_split = idx !== -1 ? this.nodes[idx].getLtPointer() : this.high_page;
@@ -201,15 +196,106 @@ export class Page<K>
       lt_page.high_page  = high_page_lt?.map(Box.new);
       if (gte_page !== undefined)
       {
-        this.insert_high_page(gte_page);
+        this.insertHighPage(gte_page);
       }
     }
 
     this.nodes.splice(idx, 0, new Node(key, value, new_lt_page));
+  }*/
+
+  upsert(key: K, level: number, value: ValueDigest): UpsertResult
+  {
+    if (level < this.level)
+    {
+      if (this.level !== 0)
+      {
+        console.assert(this.nodes.length > 0);
+      }
+
+      const ptr = this.nodes.findIndex((v) => key <= v.getKey());
+      let page: Page<K>|null;
+
+      if (ptr !== -1)
+      {
+        console.assert(this.nodes[ptr].getKey() > key);
+        page = this.nodes[ptr].getLtPointer();
+      }
+      else
+      {
+        page = this.highPage;
+      }
+
+      if (!page)
+      {
+        page = new Page<K>(level, []);
+        if (ptr !== -1)
+        {
+          this.nodes[ptr].setLtPointer(page);
+        }
+        else
+        {
+          this.highPage = page;
+        }
+      }
+
+      const result = page.upsert(key, level, value);
+      if (result === UpsertResult.InsertIntermediate)
+      {
+        insertIntermediatePage(page, key, level, value);
+      }
+    }
+    else if (level === this.level)
+    {
+      this.upsertNode(key, value);
+    }
+    else
+    {
+      return UpsertResult.InsertIntermediate;
+    }
+
+    this.treeHash = null;
+    return UpsertResult.Complete;
+  }
+
+  upsertNode(key: K, value: ValueDigest): void
+  {
+    const idx = this.nodes.findIndex((v) => key <= v.getKey());
+
+    if (idx !== -1 && this.nodes[idx].getKey() === key)
+    {
+      this.nodes[idx].updateValueHash(value);
+      return;
+    }
+
+    const pageToSplit = idx !== -1 ? this.nodes[idx].getLtPointer() : this.highPage;
+    const newLtPage   = splitOffLt(pageToSplit, key);
+
+    if (newLtPage)
+    {
+      console.assert(this.level > newLtPage.level);
+      console.assert(newLtPage.nodes.length > 0);
+      console.assert(newLtPage.maxKey() < key);
+
+      const highPageLt   = splitOffLt(newLtPage.highPage, key);
+      const gtePage      = newLtPage.highPage;
+      newLtPage.highPage = highPageLt;
+
+      if (gtePage)
+      {
+        console.assert(this.level > gtePage.level);
+        console.assert(gtePage.nodes.length > 0);
+        console.assert(gtePage.maxKey() > key);
+
+        this.insertHighPage(gtePage);
+      }
+    }
+
+    const newNode = new Node(key, value, newLtPage);
+    this.nodes.splice(idx !== -1 ? idx : this.nodes.length, 0, newNode);
   }
 }
 
-export function split_off_lt<T, K>(page: T|null, key: K): Page<K>|null
+/*export function splitOffLt<T, K>(page: T|null, key: K): Page<K>|null
 {
   if (page === null)
   {
@@ -221,12 +307,12 @@ export function split_off_lt<T, K>(page: T|null, key: K): Page<K>|null
 
   if (partition_idx === 0)
   {
-    return split_off_lt(page_ref._nodes[0].lt_pointer(), key);
+    return splitOffLt(page_ref._nodes[0].lt_pointer(), key);
   }
 
   if (partition_idx === page_ref._nodes.length)
   {
-    const lt_high_nodes = split_off_lt(page_ref.high_page, key);
+    const lt_high_nodes = splitOffLt(page_ref.high_page, key);
     const gte_high_page = page_ref.high_page;
     page_ref.high_page  = lt_high_nodes?.map(Box.new);
 
@@ -243,11 +329,11 @@ export function split_off_lt<T, K>(page: T|null, key: K): Page<K>|null
 
   if (page_ref.high_page !== null)
   {
-    gte_page.insert_high_page(page_ref.high_page);
+    gte_page.insertHighPage(page_ref.high_page);
     page_ref.high_page = null;
   }
 
-  const lt_key_high_nodes = split_off_lt(gte_page.nodes[0].getLtPointer(), key);
+  const lt_key_high_nodes = splitOffLt(gte_page.nodes[0].getLtPointer(), key);
   const lt_page           = page_ref;
   page_ref.nodes          = [];
   page_ref.high_page      = null;
@@ -258,6 +344,149 @@ export function split_off_lt<T, K>(page: T|null, key: K): Page<K>|null
   }
 
   return lt_page;
+}*/
+
+/**
+ * Split `page`, mutating it such that it contains only nodes with keys ordered
+ * strictly-less than `key`, returning a new `Page` containing the
+ * greater-than-or-equal-to nodes.
+ *
+ * If splitting `page` would leave it with no nodes, it is set to `undefined`.
+ *
+ * NOTE: this only splits the page provided - it is up to the caller to split
+ * any high pages as necessary.
+ *
+ * @throws Error if attempting to split a non-empty page (root pages are never split).
+ */
+export function splitOffLt<K>(page: Page<K>|undefined, key: K): Page<K>|undefined
+{
+  if (!page) return undefined;
+  console.assert(page.nodes.length > 0);
+
+  // A page should be split into two parts - one page containing the elements
+  // less-than "key", and one containing parts greater-or-equal to "key".
+  const partitionIdx = page.nodes.findIndex(v => key <= v.getKey());
+
+  // All the nodes are greater-than-or-equal-to "key" - there's no less-than
+  // nodes to return.
+  if (partitionIdx === 0)
+  {
+    console.assert(page.minKey() > key);
+
+    // The first gte node may have a lt_pointer with nodes that are lt key.
+    const ltPage = splitOffLt(page.nodes[0].getLtPointer(), key);
+    if (ltPage)
+    {
+      // Invalidate the page hash as the lt_page was split or the keys
+      // moved, changing the content the hash covers.
+      page.treeHash = undefined;
+    }
+    return ltPage;
+  }
+
+  // All the nodes are less than key.
+  //
+  // As an optimisation, simply return the existing page as the new page
+  // (retaining the pre-computed hash if possible) and invalidate the old
+  // page.
+  if (partitionIdx === page.nodes.length)
+  {
+    console.assert(page.maxKey() < key);
+
+    // The page may have a high page, which may have nodes within the
+    // (max(nodes.key), key) range
+    const ltHighNodes = splitOffLt(page.highPage, key);
+
+    // If existing the high page was split (both sides are non-empty) then
+    // invalidate the page hash.
+    //
+    // This effectively invalidates the page range of the returned lt_page
+    // as the cached hash covers the high page (which has now been split,
+    // changing the content).
+    if (ltHighNodes && page.highPage)
+    {
+      page.treeHash = undefined;
+    }
+
+    // Put the lt nodes back into the high page, taking the gte nodes from
+    // the high page.
+    //
+    // This leaves the lt_high_nodes in the high page link of page.
+    const gteHighPage = page.highPage;
+    page.highPage     = ltHighNodes;
+
+    // Initialise the page we're about to return.
+    //
+    // This puts an empty page into page, taking the new lt nodes in
+    // page (potentially with the high page linked to lt_high_nodes)
+    const ltPage = page;
+    page         = new Page(page.level, []);
+
+    // Put the gte nodes into the input page, if any (page should contain
+    // all gte nodes after this split).
+    if (gteHighPage)
+    {
+      page = gteHighPage;
+    }
+    else
+    {
+      page = undefined;
+    }
+
+    return ltPage;
+  }
+
+  // Invalidate the page hash as at least one node will be removed.
+  page.treeHash = undefined;
+
+  // Obtain the set of nodes that are greater-than-or-equal-to "key".
+  const gteNodes = page.nodes.splice(partitionIdx);
+  console.assert(gteNodes.length > 0);
+
+  // page now contains the lt nodes, and a high page that may be non-empty
+  // and gte than key.
+
+  // Initialise a new page to hold the gte nodes.
+  const gtePage = new Page(page.level, gteNodes);
+  console.assert(gtePage.maxKey() > key);
+
+  // Move the input high page onto the new gte page (which continues to be gte
+  // than the nodes taken from the input page).
+  if (page.highPage)
+  {
+    console.assert(page.highPage.nodes.length > 0);
+    console.assert(page.highPage.level < page.level);
+    console.assert(page.highPage.minKey() > key);
+    gtePage.insertHighPage(page.highPage);
+    page.highPage = undefined;
+  }
+
+  // The first gte node may contain a lt_pointer with keys lt key, recurse
+  // into it.
+  const ltKeyHighNodes = splitOffLt(gtePage.nodes[0].getLtPointer(), key);
+
+  // In which case it is gte all node keys in the lt page (or it wouldn't have
+  // been on the gte node).
+  //
+  // Add this to the new lt_page's high page next.
+
+  // Replace the input page with the gte nodes, taking the page containing the
+  // lt nodes and returning them to the caller.
+  const ltPage = page;
+  page         = gtePage;
+  console.assert(ltPage.nodes.length > 0);
+  console.assert(ltPage.maxKey() < key);
+
+  // Insert the high page, if any.
+  if (ltKeyHighNodes)
+  {
+    console.assert(ltKeyHighNodes.level < page.level);
+    console.assert(ltKeyHighNodes.maxKey() < key);
+    console.assert(ltKeyHighNodes.nodes.length > 0);
+    ltPage.insertHighPage(ltKeyHighNodes);
+  }
+
+  return ltPage;
 }
 
 export function insertIntermediatePage<K>(
@@ -267,14 +496,14 @@ export function insertIntermediatePage<K>(
   value: ValueDigest,
 ): void
 {
-  const lt_page = split_off_lt(child_page, key);
+  const lt_page = splitOffLt(child_page, key);
   let gte_page  = null;
 
   if (lt_page !== null)
   {
-    const high_page_lt = split_off_lt(lt_page.high_page, key);
-    gte_page           = lt_page.high_page;
-    lt_page.high_page  = high_page_lt?.map(Box.new);
+    const high_page_lt = splitOffLt(lt_page.highPage, key);
+    gte_page           = lt_page.highPage;
+    lt_page.highPage   = high_page_lt;
   }
 
   const node              = new Node(key, value, null);
@@ -282,17 +511,73 @@ export function insertIntermediatePage<K>(
 
   if (gte_page !== null)
   {
-    intermediate_page.insert_high_page(gte_page);
+    intermediate_page.insertHighPage(gte_page);
   }
 
-  const gte_page_ref             = child_page.deref_mut();
+  const gte_page_ref = child_page;
   child_page.nodes[0].setLtPointer(
-    lt_page?.map(Box.new)
+    lt_page
   );
 
   if (gte_page_ref.nodes.length > 0)
   {
-    child_page.high_page = Box.new(gte_page_ref);
+    child_page.highPage = gte_page_ref;
   }
 }
 
+/*export function insertIntermediatePage<K>(
+  childPage: Page<K>,
+  key: K,
+  level: number,
+  value: ValueDigest
+): void
+{
+  // Debug assertions
+  console.assert(childPage.level < level);
+  console.assert(childPage.nodes.length > 0);
+
+  // Split the child page
+  let ltPage: Page<K>|undefined = splitOffLt(childPage, key);
+
+  let gtePage: Page<K>|undefined;
+  if (ltPage)
+  {
+    console.assert(level > ltPage.level);
+    console.assert(ltPage.nodes.length > 0);
+    console.assert(ltPage.maxKey() < key);
+
+    const highPageLt = splitOffLt(ltPage.highPage, key);
+    gtePage          = ltPage.highPage;
+    ltPage.highPage  = highPageLt;
+
+    if (gtePage)
+    {
+      console.assert(level > gtePage.level);
+      console.assert(gtePage.nodes.length > 0);
+      console.assert(gtePage.maxKey() > key);
+    }
+  }
+
+  // Create the new node
+  const node = new Node(key, value);
+
+  // Create the new intermediate page
+  const intermediatePage = new Page(level, [node]);
+  if (gtePage)
+  {
+    intermediatePage.insertHighPage(gtePage);
+  }
+
+  // Replace the page pointer
+  const gtePage2 = childPage.deref();
+  childPage.deref = () => intermediatePage;
+
+  // Link the pages
+  intermediatePage.nodes[0].setLtPointer(ltPage);
+  if (gtePage2.nodes.length > 0)
+  {
+    console.assert(gtePage2.maxKey() > intermediatePage.nodes[0].getKey());
+    console.assert(level > gtePage2.level);
+    intermediatePage.highPage = gtePage2;
+  }
+}*/

@@ -1,5 +1,5 @@
-import { SipHasher } from './digest/siphash';
-import { insertIntermediatePage, Page } from './page';
+import { Hasher, SipHasher } from './digest/siphash';
+import { insertIntermediatePage, Page, UpsertResult } from './page';
 import { Node } from './node';
 import { RootHash, ValueDigest } from './digest/wrappers';
 import { NodeIter } from './node-iter';
@@ -10,18 +10,16 @@ import { Visitor } from './visitor/visitor';
 import { PageRangeHashVisitor } from './visitor/page-range-hash-visitor';
 
 
-type DefaultHasher = SipHasher;
-
-export class MerkleSearchTree<K, V, H = DefaultHasher>
+export class MerkleSearchTree<K, V>
 {
-  hasher: H;
+  hasher: Hasher;
   treeHasher: Hash;
   root: Page<K>;
   _rootHash: RootHash|null;
 
-  constructor(hasher?: H)
+  constructor(hasher?: Hasher)
   {
-    this.hasher     = hasher || new SipHasher() as H;
+    this.hasher     = hasher || new SipHasher();
     this.treeHasher = createHash('sha256');
     this.root       = new Page<K>(0, []);
     this._rootHash  = null;
@@ -39,7 +37,7 @@ export class MerkleSearchTree<K, V, H = DefaultHasher>
 
   inOrderTraversal<T extends Visitor<K>>(visitor: T): void
   {
-    this.root.in_order_traversal(visitor, false);
+    this.root.inOrderTraversal(visitor, false);
   }
 
   nodeIter(): NodeIter<K>
@@ -49,7 +47,7 @@ export class MerkleSearchTree<K, V, H = DefaultHasher>
 
   rootHash(): RootHash
   {
-    this.root.maybe_generate_hash(this.treeHasher);
+    this.root.maybeGenerateHash(this.treeHasher);
     const rootPageDigest = this.root.hash()?.clone();
     this._rootHash       = !!rootPageDigest ? new RootHash(rootPageDigest) : null;
 
@@ -79,7 +77,7 @@ export class MerkleSearchTree<K, V, H = DefaultHasher>
     }
 
     const visitor = new PageRangeHashVisitor<K>();
-    this.root.in_order_traversal(visitor, false);
+    this.root.inOrderTraversal(visitor, false);
     return visitor.finalise();
   }
 
@@ -91,7 +89,7 @@ export class MerkleSearchTree<K, V, H = DefaultHasher>
     this.rootHash = null;
 
     const result = this.root.upsert(key, level, valueHash.clone());
-    if (result instanceof UpsertResult.InsertIntermediate)
+    if (result === UpsertResult.InsertIntermediate)
     {
       if (this.root.nodes.length === 0)
       {

@@ -61,7 +61,7 @@ export class NodeIter<K> implements IterableIterator<Node<K>>
       if (!n)
       {
         // No more nodes, instead visit the high page next, if any.
-        const h = p.page.high_page;
+        const h = p.page.highPage;
         if (h)
         {
           this.stack.push({

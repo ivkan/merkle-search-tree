@@ -24,8 +24,8 @@ export class PageRange<K>
   static fromPage<K>(page: Page<K>): PageRange<K>
   {
     return new PageRange(
-      page.min_subtree_key(),
-      page.max_subtree_key(),
+      page.minSubtreeKey(),
+      page.maxSubtreeKey(),
       page.hash() ?? new PageDigest() // Assuming PageDigest has a default constructor
     );
   }

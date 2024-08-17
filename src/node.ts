@@ -30,7 +30,7 @@ export class Node<K>
 
     if (this.ltPointer)
     {
-      if (!this.ltPointer.in_order_traversal(visitor, false))
+      if (!this.ltPointer.inOrderTraversal(visitor, false))
       {
         return false;
       }
