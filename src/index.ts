@@ -5,3 +5,4 @@ export * from './node';
 export * from './node-iter';
 export * from './page';
 export * from './tree';
+export * from './page-utils';

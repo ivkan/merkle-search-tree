@@ -1,6 +1,6 @@
 import { Page } from './page';
-import { ValueDigest } from './digest/wrappers';
-import { Visitor } from './visitor/visitor';
+import { ValueDigest } from './digest';
+import { Visitor } from './visitor';
 
 /**
  * Storage of a single key/value pair.
@@ -13,6 +13,11 @@ export class Node<K>
   private readonly key: K;
   private valueHash: ValueDigest;
   private ltPointer: Page<K>|null;
+
+  static new<K>(key: K, value: ValueDigest, ltPointer: Page<K>|null = null): Node<K>
+  {
+    return new Node<K>(key, value, ltPointer);
+  }
 
   constructor(key: K, value: ValueDigest, ltPointer: Page<K>|null = null)
   {

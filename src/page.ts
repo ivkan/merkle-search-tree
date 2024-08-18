@@ -2,45 +2,24 @@ import { Node } from './node';
 import { PageDigest, ValueDigest } from './digest';
 import { Visitor } from './visitor';
 import { Hash } from 'crypto';
+import { splitOffLt } from './page-utils';
 
-// export class InsertIntermediate<K>
-// {
-//   value: K;
-//
-//   static create<K>(value: K): InsertIntermediate<K>
-//   {
-//     return new InsertIntermediate<K>(value);
-//   }
-//
-//   constructor(value: K)
-//   {
-//     this.value = value;
-//   }
-// }
-//
-// export type UpsertComplete = 'Complete';
-// export type UpsertResult<K> = InsertIntermediate<K> | UpsertComplete;
-
-export class InsertIntermediate<T> {
+export class InsertIntermediate<T>
+{
   key: T
 
-  constructor(key: T) {
+  constructor(key: T)
+  {
     this.key = key
   }
 }
 
-type Complete = "Complete"
-export type IUpsertResult<T> = Complete | InsertIntermediate<T>
+type Complete = 'Complete'
+export type IUpsertResult<T> = Complete|InsertIntermediate<T>
 export const UpsertResult = {
-  Complete: "Complete" as Complete,
+  Complete          : 'Complete' as Complete,
   InsertIntermediate: (k: any) => new InsertIntermediate(k),
 }
-
-// export enum UpsertResult
-// {
-//   Complete           = 'Complete',
-//   InsertIntermediate = 'InsertIntermediate',
-// }
 
 export class Page<K>
 {
@@ -55,6 +34,11 @@ export class Page<K>
     this.treeHash = null;
     this.nodes    = nodes;
     this.highPage = null;
+  }
+
+  setNull(): void
+  {
+    Object.assign(this, null);
   }
 
   hash(): PageDigest|null
@@ -104,7 +88,7 @@ export class Page<K>
   {
     if (this.nodes.length === 0)
     {
-      throw new Error('Panic: no nodes in this page');
+      throw new Error('No nodes in this page.');
     }
     return this.nodes[0].getKey();
   }
@@ -113,7 +97,7 @@ export class Page<K>
   // {
   //   if (this.nodes.length === 0)
   //   {
-  //     throw new Error('Panic: no nodes in this page');
+  //     throw new Error('No nodes in this page.');
   //   }
   //   return this.nodes[this.nodes.length - 1].getKey();
   // }
@@ -243,6 +227,10 @@ export class Page<K>
       if (this.level !== 0)
       {
         console.assert(this.nodes.length > 0);
+      }
+
+      if (this.nodes.length === 0) {
+        throw new Error("No nodes in this page.")
       }
 
       const ptr = this.nodes.findIndex((v) => key <= v.getKey());
@@ -379,6 +367,200 @@ export class Page<K>
   return lt_page;
 }*/
 
+/*/!**
+ * Split `page`, mutating it such that it contains only nodes with keys ordered
+ * strictly-less than `key`, returning a new `Page` containing the
+ * greater-than-or-equal-to nodes.
+ *
+ * If splitting `page` would leave it with no nodes, it is set to `undefined`.
+ *
+ * NOTE: this only splits the page provided - it is up to the caller to split
+ * any high pages as necessary.
+ *
+ * @throws Error if attempting to split a non-empty page (root pages are never split).
+ *!/
+export function splitOffLt<K>(page: Page<K> | undefined, key: K): Page<K> | undefined {
+  if (!page) return undefined;
+
+  if (page.nodes.length === 0) {
+    throw new Error("Cannot split an empty page");
+  }
+
+  // A page should be split into two parts - one page containing the elements
+  // less-than "key", and one containing parts greater-or-equal to "key".
+  const partitionIdx = page.nodes.findIndex(v => key <= v.getKey());
+
+  // All the nodes are greater-than-or-equal-to "key" - there's no less-than
+  // nodes to return.
+  if (partitionIdx === 0) {
+    if (page.minKey() <= key) {
+      throw new Error("Assertion failed: page.minKey() > key");
+    }
+
+    // The first gte node may have a lt_pointer with nodes that are lt key.
+    const ltPage = splitOffLt(page.nodes[0].getLtPointer(), key);
+    if (ltPage) {
+      // Invalidate the page hash as the lt_page was split or the keys
+      // moved, changing the content the hash covers.
+      page.treeHash = undefined;
+      return ltPage;
+    }
+    return undefined;
+  }
+
+  // All the nodes are less than key.
+  if (partitionIdx === page.nodes.length) {
+    if (page.maxKey() >= key) {
+      throw new Error("Assertion failed: page.maxKey() < key");
+    }
+
+    // The page may have a high page, which may have nodes within the
+    // (max(nodes.key), key) range
+    const ltHighNodes = splitOffLt(page.highPage, key);
+
+    // If existing the high page was split (both sides are non-empty) then
+    // invalidate the page hash.
+    if (ltHighNodes && page.highPage) {
+      page.treeHash = undefined;
+    }
+
+    // Put the lt nodes back into the high page, taking the gte nodes from
+    // the high page.
+    const gteHighPage = page.highPage;
+    page.highPage = ltHighNodes;
+
+    // Initialise the page we're about to return.
+    const ltPage = new Page(page.level, page.nodes);
+    page.nodes = [];
+
+    // Put the gte nodes into the input page, if any (page should contain
+    // all gte nodes after this split).
+    if (gteHighPage) {
+      Object.assign(page, gteHighPage);
+    } else {
+      page = undefined;
+      console.log('clear!!')
+    }
+
+    return ltPage;
+  }
+
+  // Invalidate the page hash as at least one node will be removed.
+  page.treeHash = undefined;
+
+  // Obtain the set of nodes that are greater-than-or-equal-to "key".
+  const gteNodes = page.nodes.splice(partitionIdx);
+  if (gteNodes.length === 0) {
+    throw new Error("Assertion failed: !gteNodes.isEmpty()");
+  }
+
+  // Initialise a new page to hold the gte nodes.
+  const gtePage = new Page(page.level, gteNodes);
+  if (gtePage.maxKey() <= key) {
+    console.log({
+      key,
+      maxKey: gtePage.maxKey()
+    });
+    // throw new Error("Assertion failed: gtePage.maxKey() > key");
+  }
+
+  // Move the input high page onto the new gte page (which continues to be gte
+  // than the nodes taken from the input page).
+  if (page.highPage) {
+    if (page.highPage.nodes.length === 0) {
+      throw new Error("Assertion failed: !h.nodes.isEmpty()");
+    }
+    if (page.highPage.level >= page.level) {
+      throw new Error("Assertion failed: h.level < page.level");
+    }
+    if (page.highPage.minKey() <= key) {
+      throw new Error("Assertion failed: h.minKey() > key");
+    }
+    gtePage.insertHighPage(page.highPage);
+    page.highPage = undefined;
+  }
+
+  // The first gte node may contain a lt_pointer with keys lt key, recurse
+  // into it.
+  const ltKeyHighNodes = splitOffLt(gtePage.nodes[0].getLtPointer(), key);
+
+  // Replace the input page with the gte nodes, taking the page containing the
+  // lt nodes and returning them to the caller.
+  const ltPage = page;
+  Object.assign(page, gtePage);
+  if (ltPage.nodes.length === 0) {
+    throw new Error("Assertion failed: !ltPage.nodes.isEmpty()");
+  }
+  if (ltPage.maxKey() >= key) {
+    throw new Error("Assertion failed: ltPage.maxKey() < key");
+  }
+
+  // Insert the high page, if any.
+  if (ltKeyHighNodes) {
+    if (ltKeyHighNodes.level >= page.level) {
+      throw new Error("Assertion failed: h.level < page.level");
+    }
+    if (ltKeyHighNodes.maxKey() >= key) {
+      throw new Error("Assertion failed: h.maxKey() < key");
+    }
+    if (ltKeyHighNodes.nodes.length === 0) {
+      throw new Error("Assertion failed: !h.nodes.isEmpty()");
+    }
+    ltPage.insertHighPage(ltKeyHighNodes);
+  }
+
+  return ltPage;
+}*/
+
+/*export function splitOffLt<K>(page: Page<K>|undefined, key: K): Page<K>|undefined
+{
+  if (page === null)
+  {
+    return null;
+  }
+
+  const partition_idx = page.nodes.findIndex(v => key > v.getKey());
+
+  if (partition_idx === 0)
+  {
+    return splitOffLt(page.nodes[0].getLtPointer(), key);
+  }
+
+  if (partition_idx === page.nodes.length)
+  {
+    const lt_high_nodes = splitOffLt(page.highPage, key);
+    const gte_high_page = page.highPage;
+    page.highPage      = lt_high_nodes !== null ? new Page(page.level, lt_high_nodes.nodes) : null;
+
+    const lt_page  = new Page(page.level, page.nodes);
+    page.nodes     = [];
+    page.highPage = gte_high_page;
+
+    return lt_page;
+  }
+
+  page.treeHash  = null;
+  const gte_nodes = page.nodes.splice(partition_idx);
+  const gte_page  = new Page(page.level, gte_nodes);
+
+  if (page.highPage !== null)
+  {
+    gte_page.insertHighPage(page.highPage);
+    page.highPage = null;
+  }
+
+  const lt_key_high_nodes = splitOffLt(gte_page.nodes[0].getLtPointer(), key);
+  const lt_page           = new Page(page.level, page.nodes);
+  page.nodes              = gte_page.nodes;
+
+  if (lt_key_high_nodes !== null)
+  {
+    lt_page.insertHighPage(new Page(page.level, lt_key_high_nodes.nodes));
+  }
+
+  return lt_page;
+}*/
+
 /**
  * Split `page`, mutating it such that it contains only nodes with keys ordered
  * strictly-less than `key`, returning a new `Page` containing the
@@ -391,7 +573,7 @@ export class Page<K>
  *
  * @throws Error if attempting to split a non-empty page (root pages are never split).
  */
-export function splitOffLt<K>(page: Page<K>|undefined, key: K): Page<K>|undefined
+/*export function splitOffLt<K>(page: Page<K>|undefined, key: K): Page<K>|undefined
 {
   if (!page) return undefined;
   console.assert(page.nodes.length > 0);
@@ -481,6 +663,10 @@ export function splitOffLt<K>(page: Page<K>|undefined, key: K): Page<K>|undefine
 
   // Initialise a new page to hold the gte nodes.
   const gtePage = new Page(page.level, gteNodes);
+  console.log({
+    maxKey: gtePage.maxKey(),
+    key
+  })
   console.assert(gtePage.maxKey() > key);
 
   // Move the input high page onto the new gte page (which continues to be gte
@@ -520,7 +706,7 @@ export function splitOffLt<K>(page: Page<K>|undefined, key: K): Page<K>|undefine
   }
 
   return ltPage;
-}
+}*/
 
 export function insertIntermediatePage<K>(
   child_page: Page<K>,

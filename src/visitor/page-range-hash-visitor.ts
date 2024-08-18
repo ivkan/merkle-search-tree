@@ -1,12 +1,12 @@
 import { Visitor } from './visitor';
-import { PageRange } from '../diff/page-range';
+import { PageRange } from '../diff';
 import { Page } from '../page';
 import { Node } from '../node';
 
 /**
  * Record the page range & hashes for the visited pages.
  */
-export class PageRangeHashVisitor<K extends number> implements Visitor<K>
+export class PageRangeHashVisitor<K extends Number> implements Visitor<K>
 {
   private readonly out: PageRange<K>[];
 

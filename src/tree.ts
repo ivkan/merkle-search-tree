@@ -1,16 +1,13 @@
-import { Hasher, SipHasher } from './digest/siphash';
-import { insertIntermediatePage, Page, UpsertResult } from './page';
+import { Digest, Hasher, SipHasher, RootHash, ValueDigest } from './digest';
+import { InsertIntermediate, insertIntermediatePage, Page } from './page';
 import { Node } from './node';
-import { RootHash, ValueDigest } from './digest/wrappers';
 import { NodeIter } from './node-iter';
-import { PageRange } from './diff/page-range';
-import { Digest } from './digest/digest';
 import { createHash, Hash } from 'crypto';
-import { Visitor } from './visitor/visitor';
-import { PageRangeHashVisitor } from './visitor/page-range-hash-visitor';
+import { PageRangeHashVisitor, Visitor } from './visitor';
+import { PageRange } from './diff';
 
 
-export class MerkleSearchTree<K, V>
+export class MerkleSearchTree<K extends Number, V>
 {
   hasher: Hasher;
   treeHasher: Hash;
@@ -25,7 +22,7 @@ export class MerkleSearchTree<K, V>
     this._rootHash  = null;
   }
 
-  static default<K, V>(): MerkleSearchTree<K, V>
+  static default<K extends Number, V>(): MerkleSearchTree<K, V>
   {
     return new MerkleSearchTree<K, V>();
   }
@@ -89,7 +86,7 @@ export class MerkleSearchTree<K, V>
     this.rootHash = null;
 
     const result = this.root.upsert(key, level, valueHash.clone());
-    if (result === UpsertResult.InsertIntermediate)
+    if (result instanceof InsertIntermediate && result.key === key)
     {
       if (this.root.nodes.length === 0)
       {

@@ -1,5 +1,8 @@
 // import { Digest, PageDigest, ValueDigest } from './digest';
 // import { Node } from './node';
+// import { InsertIntermediate, IUpsertResult, UpsertResult } from './page';
+// import { Visitor } from './visitor';
+// import { Hash } from 'crypto';
 //
 //
 // export class Page<K>
@@ -22,7 +25,7 @@
 //     return this.tree_hash;
 //   }
 //
-//   insert_high_page(p: Page<K>): void
+//   insertHighPage(p: Page<K>): void
 //   {
 //     if (this.high_page !== null || p.nodes.length === 0)
 //     {
@@ -32,27 +35,27 @@
 //     this.high_page = p;
 //   }
 //
-//   in_order_traversal<T>(visitor: T, high_page: boolean): boolean
+//   inOrderTraversal<T extends Visitor<K>>(visitor: T, high_page: boolean): boolean
 //   {
-//     if (!visitor.visit_page(this, high_page))
+//     if (!visitor.visitPage(this, high_page))
 //     {
 //       return false;
 //     }
 //
 //     for (const node of this.nodes)
 //     {
-//       if (!node.depth_first(visitor))
+//       if (!node.depthFirst(visitor))
 //       {
 //         return false;
 //       }
 //     }
 //
-//     if (!visitor.post_visit_page(this))
+//     if (!visitor.postVisitPage(this))
 //     {
 //       return false;
 //     }
 //
-//     if (this.high_page !== null && !this.high_page.in_order_traversal(visitor, true))
+//     if (this.high_page !== null && !this.high_page.inOrderTraversal(visitor, true))
 //     {
 //       return false;
 //     }
@@ -60,7 +63,7 @@
 //     return true;
 //   }
 //
-//   min_key(): K
+//   minKey(): K
 //   {
 //     if (this.nodes.length === 0)
 //     {
@@ -69,7 +72,7 @@
 //     return this.nodes[0].getKey();
 //   }
 //
-//   max_key(): K
+//   maxKey(): K
 //   {
 //     if (this.nodes.length === 0)
 //     {
@@ -78,33 +81,33 @@
 //     return this.nodes[this.nodes.length - 1].getKey();
 //   }
 //
-//   min_subtree_key(): K
+//   minSubtreeKey(): K
 //   {
 //     const v = this.nodes[0].getLtPointer();
 //     if (v !== null)
 //     {
 //       return v.minSubtreeKey();
 //     }
-//     return this.min_key();
+//     return this.minKey();
 //   }
 //
-//   max_subtree_key(): K
+//   maxSubtreeKey(): K
 //   {
 //     if (this.high_page !== null)
 //     {
-//       return this.high_page.max_subtree_key();
+//       return this.high_page.maxSubtreeKey();
 //     }
-//     return this.max_key();
+//     return this.maxKey();
 //   }
 //
-//   maybe_generate_hash(hasher: SipHasher24): void
+//   maybeGenerateHash(hasher: Hash): void
 //   {
 //     if (this.tree_hash !== null)
 //     {
 //       return;
 //     }
 //
-//     const h = hasher.clone();
+//     const h = hasher.copy();
 //
 //     for (const n of this.nodes)
 //     {
@@ -118,25 +121,27 @@
 //       h.write(n.getValueHash());
 //     }
 //
-//     const high_hash = this.high_page?.maybe_generate_hash(hasher);
+//     const high_hash = this.high_page?.maybeGenerateHash(hasher);
 //     if (high_hash !== undefined)
 //     {
-//       h.write(high_hash.as_ref());
+//       h.write(high_hash);
 //     }
 //
 //     this.tree_hash = PageDigest.from(Digest.new(h.finish128().as_bytes()));
 //   }
 //
-//   upsert(key: K, level: number, value: ValueDigest<N>): UpsertResult<K>
+//   upsert(key: K, level: number, value: ValueDigest): IUpsertResult<K>
 //   {
 //     if (level < this.level)
 //     {
-//       const ptr      = this.nodes.findIndex(v => key > v.key());
-//       const page     = ptr !== -1 ? this.nodes[ptr].lt_pointer() : this.high_page;
+//       const ptr      = this.nodes.findIndex(v => key > v.getKey());
+//       const page     = ptr !== -1 ? this.nodes[ptr].getLtPointer() : this.high_page;
 //       const page_ref = page !== null ? page : new Page(level, []);
-//       if (page_ref.upsert(key, level, value) === UpsertResult.InsertIntermediate(key))
+//
+//       const res = page_ref.upsert(key, level, value);
+//       if (res instanceof InsertIntermediate && res.key === UpsertResult.InsertIntermediate(key).key)
 //       {
-//         insert_intermediate_page(page_ref, key, level, value);
+//         insertIntermediatePage(page_ref, key, level, value);
 //       }
 //     }
 //     else if (level === this.level)
@@ -152,21 +157,21 @@
 //     return UpsertResult.Complete;
 //   }
 //
-//   upsert_node(key: K, value: ValueDigest<N>): void
+//   upsert_node(key: K, value: ValueDigest): void
 //   {
 //     const idx           = this.nodes.findIndex(v => key > v.key());
 //     const page_to_split = idx !== -1 ? this.nodes[idx].lt_pointer() : this.high_page;
 //
-//     let new_lt_page = split_off_lt(page_to_split, key);
+//     let new_lt_page = splitOffLt(page_to_split, key);
 //
 //     if (new_lt_page !== null)
 //     {
-//       const high_page_lt    = split_off_lt(new_lt_page.high_page, key);
+//       const high_page_lt    = splitOffLt(new_lt_page.high_page, key);
 //       const gte_page        = new_lt_page.high_page;
 //       new_lt_page.high_page = high_page_lt !== null ? new Page(this.level, high_page_lt.nodes) : null;
 //       if (gte_page !== null)
 //       {
-//         this.insert_high_page(gte_page);
+//         this.insertHighPage(gte_page);
 //       }
 //     }
 //
@@ -174,7 +179,7 @@
 //   }
 // }
 //
-// function split_off_lt<N extends number, T, K>(page: T|null, key: K): Page<N, K>|null
+// export function splitOffLt<N extends number, T, K>(page: T|null, key: K): Page<N, K>|null
 // {
 //   if (page === null)
 //   {
@@ -185,12 +190,12 @@
 //
 //   if (partition_idx === 0)
 //   {
-//     return split_off_lt(page.nodes[0].lt_pointer(), key);
+//     return splitOffLt(page.nodes[0].lt_pointer(), key);
 //   }
 //
 //   if (partition_idx === page.nodes.length)
 //   {
-//     const lt_high_nodes = split_off_lt(page.high_page, key);
+//     const lt_high_nodes = splitOffLt(page.high_page, key);
 //     const gte_high_page = page.high_page;
 //     page.high_page      = lt_high_nodes !== null ? new Page(page.level, lt_high_nodes.nodes) : null;
 //
@@ -207,35 +212,35 @@
 //
 //   if (page.high_page !== null)
 //   {
-//     gte_page.insert_high_page(page.high_page);
+//     gte_page.insertHighPage(page.high_page);
 //     page.high_page = null;
 //   }
 //
-//   const lt_key_high_nodes = split_off_lt(gte_page.nodes[0].lt_pointer(), key);
+//   const lt_key_high_nodes = splitOffLt(gte_page.nodes[0].lt_pointer(), key);
 //   const lt_page           = new Page(page.level, page.nodes);
 //   page.nodes              = gte_page.nodes;
 //
 //   if (lt_key_high_nodes !== null)
 //   {
-//     lt_page.insert_high_page(new Page(page.level, lt_key_high_nodes.nodes));
+//     lt_page.insertHighPage(new Page(page.level, lt_key_high_nodes.nodes));
 //   }
 //
 //   return lt_page;
 // }
 //
-// function insert_intermediate_page<T, K>(
+// export function insertIntermediatePage<T, K>(
 //   child_page: T,
 //   key: K,
 //   level: number,
 //   value: ValueDigest,
 // ): void
 // {
-//   let lt_page  = split_off_lt(child_page, key);
+//   let lt_page  = splitOffLt(child_page, key);
 //   let gte_page = null;
 //
 //   if (lt_page !== null)
 //   {
-//     const high_page_lt = split_off_lt(lt_page.high_page, key);
+//     const high_page_lt = splitOffLt(lt_page.high_page, key);
 //     gte_page           = lt_page.high_page;
 //     lt_page.high_page  = high_page_lt !== null ? new Page(lt_page.level, high_page_lt.nodes) : null;
 //   }
@@ -245,7 +250,7 @@
 //
 //   if (gte_page !== null)
 //   {
-//     intermediate_page.insert_high_page(gte_page);
+//     intermediate_page.insertHighPage(gte_page);
 //   }
 //
 //   const gte_page_ref             = child_page.nodes[0].lt_pointer();
