@@ -3,7 +3,7 @@ import { DiffRange } from './diff-range';
 /**
  * Helper to construct an ordered list of non-overlapping DiffRange intervals.
  */
-export class RangeList<K>
+export class RangeList<K extends number>
 {
   private readonly syncRanges: DiffRange<K>[];
 

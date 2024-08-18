@@ -13,4 +13,9 @@ export class DiffRange<K>
   {
     return p.end >= this.start && p.start <= this.end;
   }
+
+  clone(): DiffRange<K>
+  {
+    return new DiffRange<K>(this.start, this.end)
+  }
 }

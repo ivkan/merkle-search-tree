@@ -12,7 +12,7 @@ import { DiffRange } from './diff-range';
  * range is marked both inconsistent and consistent, is is treated as a
  * consistent range.
  */
-export class DiffListBuilder<K>
+export class DiffListBuilder<K extends number>
 {
   private _inconsistent: RangeList<K>;
   private _consistent: RangeList<K>;

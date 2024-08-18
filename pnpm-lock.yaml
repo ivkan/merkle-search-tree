@@ -11,6 +11,9 @@ dependencies:
   '@scure/base':
     specifier: ^1.1.7
     version: 1.1.7
+  it-peekable:
+    specifier: ^3.0.5
+    version: 3.0.5
 
 devDependencies:
   '@egoist/prettier-config':
@@ -1762,6 +1765,10 @@ packages:
       html-escaper: 2.0.2
       istanbul-lib-report: 3.0.1
     dev: true
+
+  /it-peekable@3.0.5:
+    resolution: {integrity: sha512-JWQOGMt6rKiPcY30zUVMR4g6YxkpueTwHVE7CMs/aGqCf4OydM6w+7ZM3PvmO1e0TocjuR4aL8xyZWR46cTqCQ==}
+    dev: false
 
   /jake@10.9.2:
     resolution: {integrity: sha512-2P4SQ0HrLQ+fw6llpLnOaGAvN2Zu6778SJMrCUwns4fOoG9ayrTiZk3VV8sCPkVZF8ab0zksVpS8FDY5pRCNBA==}

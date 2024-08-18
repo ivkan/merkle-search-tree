@@ -1,13 +1,46 @@
 import { Node } from './node';
-import { PageDigest, ValueDigest } from './digest/wrappers';
-import { Visitor } from './visitor/visitor';
+import { PageDigest, ValueDigest } from './digest';
+import { Visitor } from './visitor';
 import { Hash } from 'crypto';
 
-export enum UpsertResult
-{
-  Complete           = 'Complete',
-  InsertIntermediate = 'InsertIntermediate',
+// export class InsertIntermediate<K>
+// {
+//   value: K;
+//
+//   static create<K>(value: K): InsertIntermediate<K>
+//   {
+//     return new InsertIntermediate<K>(value);
+//   }
+//
+//   constructor(value: K)
+//   {
+//     this.value = value;
+//   }
+// }
+//
+// export type UpsertComplete = 'Complete';
+// export type UpsertResult<K> = InsertIntermediate<K> | UpsertComplete;
+
+export class InsertIntermediate<T> {
+  key: T
+
+  constructor(key: T) {
+    this.key = key
+  }
 }
+
+type Complete = "Complete"
+export type IUpsertResult<T> = Complete | InsertIntermediate<T>
+export const UpsertResult = {
+  Complete: "Complete" as Complete,
+  InsertIntermediate: (k: any) => new InsertIntermediate(k),
+}
+
+// export enum UpsertResult
+// {
+//   Complete           = 'Complete',
+//   InsertIntermediate = 'InsertIntermediate',
+// }
 
 export class Page<K>
 {
@@ -203,7 +236,7 @@ export class Page<K>
     this.nodes.splice(idx, 0, new Node(key, value, new_lt_page));
   }*/
 
-  upsert(key: K, level: number, value: ValueDigest): UpsertResult
+  upsert(key: K, level: number, value: ValueDigest): IUpsertResult<K>
   {
     if (level < this.level)
     {
@@ -239,7 +272,7 @@ export class Page<K>
       }
 
       const result = page.upsert(key, level, value);
-      if (result === UpsertResult.InsertIntermediate)
+      if (result instanceof InsertIntermediate && result.key === key)
       {
         insertIntermediatePage(page, key, level, value);
       }
@@ -250,7 +283,7 @@ export class Page<K>
     }
     else
     {
-      return UpsertResult.InsertIntermediate;
+      return UpsertResult.InsertIntermediate(key);
     }
 
     this.treeHash = null;

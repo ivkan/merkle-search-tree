@@ -30,7 +30,7 @@ import { PageDigest } from '../digest/wrappers';
  * A `PageRangeSnapshot` can also be generated from owned key values using
  * the `OwnedPageRange` type to eliminate clones where unnecessary.
  */
-export class PageRangeSnapshot<K>
+export class PageRangeSnapshot<K extends number>
 {
   private ranges: OwnedPageRange<K>[];
 
@@ -50,22 +50,22 @@ export class PageRangeSnapshot<K>
     }
   }
 
-  static from<K>(value: PageRange<K>[]): PageRangeSnapshot<K>
+  static from<K extends number>(value: PageRange<K>[]): PageRangeSnapshot<K>
   {
     return new PageRangeSnapshot(value.map(v => OwnedPageRange.from(v)));
   }
 
-  static fromIterator<K>(iter: Iterable<PageRange<K>>): PageRangeSnapshot<K>
+  static fromIterator<K extends number>(iter: Iterable<PageRange<K>>): PageRangeSnapshot<K>
   {
     return new PageRangeSnapshot(Array.from(iter).map(v => OwnedPageRange.from(v)));
   }
 
-  static fromOwnedRanges<K>(value: OwnedPageRange<K>[]): PageRangeSnapshot<K>
+  static fromOwnedRanges<K extends number>(value: OwnedPageRange<K>[]): PageRangeSnapshot<K>
   {
     return new PageRangeSnapshot(value);
   }
 
-  static fromOwnedIterator<K>(iter: Iterable<OwnedPageRange<K>>): PageRangeSnapshot<K>
+  static fromOwnedIterator<K extends number>(iter: Iterable<OwnedPageRange<K>>): PageRangeSnapshot<K>
   {
     return new PageRangeSnapshot(Array.from(iter));
   }
@@ -78,11 +78,20 @@ export class PageRangeSnapshot<K>
  * This type can be used to construct a `PageRangeSnapshot` from owned values
  * (eliminating key/hash clones).
  */
-export class OwnedPageRange<K>
+export class OwnedPageRange<K extends number>
 {
   start: K;
   end: K;
   hash: PageDigest;
+
+  static from<K extends number>(v: PageRange<K>): OwnedPageRange<K>
+  {
+    return new OwnedPageRange(
+      structuredClone(v.getStart()),
+      structuredClone(v.getEnd()),
+      v.intoHash()
+    );
+  }
 
   /**
    * Initialise a new `OwnedPageRange` for the given inclusive key
@@ -99,15 +108,6 @@ export class OwnedPageRange<K>
     this.start = start;
     this.end   = end;
     this.hash  = hash;
-  }
-
-  static from<K>(v: PageRange<K>): OwnedPageRange<K>
-  {
-    return new OwnedPageRange(
-      structuredClone(v.getStart()),
-      structuredClone(v.getEnd()),
-      v.intoHash()
-    );
   }
 }
 

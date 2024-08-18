@@ -6,9 +6,9 @@ import { Node } from '../node';
 /**
  * Record the page range & hashes for the visited pages.
  */
-export class PageRangeHashVisitor<K> implements Visitor<K>
+export class PageRangeHashVisitor<K extends number> implements Visitor<K>
 {
-  private out: PageRange<K>[];
+  private readonly out: PageRange<K>[];
 
   constructor()
   {
