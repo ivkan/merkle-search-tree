@@ -1,8 +1,8 @@
-import { Digest, ValueDigest } from '../src/digest';
+import { Digest, ValueDigest } from '../src';
 import { Page, Node, NodeIter } from '../src';
 import { IntKey } from './test-util';
 
-const MOCK_VALUE: ValueDigest = new ValueDigest(new Digest(new Uint8Array(32).fill(0)));
+const MOCK_VALUE: ValueDigest<32> = new ValueDigest(new Digest(new Uint8Array(32).fill(0)));
 
 //                    ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
 //                      ┌───┬───┬───────┐

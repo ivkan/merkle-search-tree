@@ -11,10 +11,10 @@ import { Visitor } from './visitor';
 export class Node<N extends number, K>
 {
   private readonly key: K;
-  private valueHash: ValueDigest;
+  private valueHash: ValueDigest<N>;
   private ltPointer: Page<N, K>|null;
 
-  constructor(key: K, value: ValueDigest, ltPointer: Page<N, K>|null = null)
+  constructor(key: K, value: ValueDigest<N>, ltPointer: Page<N, K>|null = null)
   {
     this.key       = key;
     this.valueHash = value;
@@ -60,12 +60,12 @@ export class Node<N extends number, K>
   /**
    * Return the hash of the value for this node.
    */
-  getValueHash(): ValueDigest
+  getValueHash(): ValueDigest<N>
   {
     return this.valueHash;
   }
 
-  updateValueHash(hash: ValueDigest): void
+  updateValueHash(hash: ValueDigest<N>): void
   {
     this.valueHash = hash;
   }

@@ -223,7 +223,7 @@ export class Page<N extends number, K>
     this.nodes.splice(idx, 0, new Node(key, value, new_lt_page));
   }*/
 
-  upsert(key: K, level: number, value: ValueDigest): IUpsertResult<K>
+  upsert(key: K, level: number, value: ValueDigest<N>): IUpsertResult<K>
   {
     if (level < this.level)
     {
@@ -281,7 +281,7 @@ export class Page<N extends number, K>
     return UpsertResult.Complete;
   }
 
-  upsertNode(key: K, value: ValueDigest): void
+  upsertNode(key: K, value: ValueDigest<N>): void
   {
     const idx = this.nodes.findIndex((v) => key <= v.getKey());
 
@@ -721,7 +721,7 @@ export function insertIntermediatePage<N extends number, K>(
   child_page: Page<N, K>,
   key: K,
   level: number,
-  value: ValueDigest,
+  value: ValueDigest<N>,
 ): void
 {
   const lt_page = splitOffLt(child_page, key, updatedPage =>

@@ -3,7 +3,7 @@ import { base64 } from "@scure/base"
 /**
  * A variable bit length digest, output from a `Hasher` implementation.
  */
-export class Digest
+export class Digest<N extends number>
 {
   private readonly digest: Uint8Array;
 
@@ -11,7 +11,7 @@ export class Digest
    * Extract the number of leading 0's when expressed as base 16 digits, defining
    * the tree level the hash should reside at.
    */
-  static level(v: Digest): number
+  static level<N extends number>(v: Digest<N>): number
   {
     let out = 0;
     for (const byte of v.asBytes())
@@ -33,17 +33,9 @@ export class Digest
     return out;
   }
 
-  /**
-   * Wrap an opaque byte array in a `Digest` for type safety.
-   */
-  static new(digest: Uint8Array): Digest
+  constructor(digest: Uint8Array, length?: N)
   {
-    return new Digest(digest);
-  }
-
-  constructor(digest: Uint8Array, length?: number)
-  {
-    length = typeof length === 'number' ? length : digest.length;
+    length = (typeof length === 'number' ? length : digest.length) as N;
     if (digest.length !== length)
     {
       throw new Error(`Digest must be ${length} bytes long`);
@@ -51,7 +43,7 @@ export class Digest
     this.digest = digest;
   }
 
-  clone(): Digest
+  clone(): Digest<N>
   {
     return new Digest(this.digest);
   }

@@ -10,14 +10,14 @@ import { Digest } from './digest';
  */
 export class RootHash
 {
-  private readonly value: Digest;
+  readonly value: Digest<16>;
 
   constructor(value: PageDigest)
   {
     this.value = value.value;
   }
 
-  valueOf(): Digest
+  valueOf(): Digest<16>
   {
     return this.value;
   }
@@ -32,21 +32,16 @@ export class RootHash
  * Type wrapper over a `Digest` of a `Page`, representing the hash of the
  * nodes & subtree rooted at the `Page`.
  */
-export class PageDigest
+export class PageDigest implements RootHash
 {
-  value: Digest;
-
-  static new(value: Uint8Array): PageDigest
-  {
-    return new PageDigest(value);
-  }
+  readonly value: Digest<16>;
 
   constructor(value: Uint8Array = new Uint8Array())
   {
     this.value = new Digest(value);
   }
 
-  valueOf(): Digest
+  valueOf(): Digest<16>
   {
     return this.value;
   }
@@ -66,26 +61,21 @@ export class PageDigest
  * Type wrapper over a `Digest` of a tree value, for readability / clarity /
  * compile-time safety.
  */
-export class ValueDigest
+export class ValueDigest<N extends number>
 {
-  private readonly value: Digest;
+  private readonly value: Digest<N>;
 
-  static new(value: Digest): ValueDigest
-  {
-    return new ValueDigest(value);
-  }
-
-  constructor(value: Digest)
+  constructor(value: Digest<N>)
   {
     this.value = value;
   }
 
-  clone(): ValueDigest
+  clone(): ValueDigest<N>
   {
     return new ValueDigest(this.value.clone());
   }
 
-  valueOf(): Digest
+  valueOf(): Digest<N>
   {
     return this.value;
   }

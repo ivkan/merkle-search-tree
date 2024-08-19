@@ -85,12 +85,12 @@ import { PageRange } from './diff';
  */
 export class MerkleSearchTree<K, V, N extends number = 16>
 {
-  hasher: Hasher;
+  hasher: Hasher<N, V|K>;
   treeHasher: Hash;
   root: Page<N, K>;
   _rootHash: RootHash|null;
 
-  constructor(hasher?: Hasher)
+  constructor(hasher?: Hasher<N, V>)
   {
     this.hasher     = hasher || new SipHasher();
     this.treeHasher = createHash('sha256');

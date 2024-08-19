@@ -1,4 +1,32 @@
-import { PageRange, MerkleSearchTree } from '../src';
+import { PageRange, MerkleSearchTree, Digest } from '../src';
+
+export class MockHasher
+{
+  hash(value: any): Digest<16>
+  {
+    if (value instanceof LevelKey)
+    {
+      const level = value.level
+      const iter  = Array(Math.floor(level / 2)).fill(0)
+
+      let v: number[] = level % 2 === 1 ? [...iter, 0xf0] : iter
+
+      v = v.concat(Array(32 - v.length).fill(1))
+      return new Digest(new Uint8Array(v), new Uint8Array(v).length)
+    }
+    else if (typeof value === 'string')
+    {
+      let v = new TextEncoder().encode(value)
+      if (v.length > 32)
+      {
+        throw new Error('mock hash value is more than 32 bytes')
+      }
+      v = new Uint8Array([...v, ...Array(32 - v.length).fill(1)])
+      return new Digest(v, v.length)
+    }
+    throw new Error('Unsupported input type')
+  }
+}
 
 export class LevelKey<T>
 {

@@ -1,7 +1,7 @@
 import { Digest, PageDigest, ValueDigest } from '../src';
 import { Page, Node, splitOffLt } from '../src';
 
-const MOCK_VALUE: ValueDigest    = new ValueDigest(new Digest(new Uint8Array(1).fill(0)));
+const MOCK_VALUE: ValueDigest<1>    = new ValueDigest(new Digest(new Uint8Array(1).fill(0)));
 const MOCK_PAGE_HASH: PageDigest = new PageDigest(new Uint8Array(16).fill(0));
 
 describe('Page Split Tests', () =>
