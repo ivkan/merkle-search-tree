@@ -1,1 +1,1 @@
-export * from './split-of-lt-3';
+export * from './split-of-lt';

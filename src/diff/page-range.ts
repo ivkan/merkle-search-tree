@@ -12,7 +12,7 @@ import { Page } from '../page';
  * network, and reconstructed by the receiver by calling `PageRange.new()`
  * with the serialised values.
  */
-export class PageRange<K extends Number>
+export class PageRange<K>
 {
   private readonly start: K;
   private readonly end: K;
@@ -21,7 +21,7 @@ export class PageRange<K extends Number>
   /**
    * Create a `PageRange` from a `Page`.
    */
-  static fromPage<K extends Number>(page: Page<K>): PageRange<K>
+  static fromPage<N extends number, K>(page: Page<N, K>): PageRange<K>
   {
     return new PageRange(
       page.minSubtreeKey(),

@@ -5,28 +5,23 @@ import { Visitor } from './visitor';
 /**
  * Storage of a single key/value pair.
  *
- * Keys are stored immutably in the `Node`, alongside the hash of a value
+ * Keys are stored immutably in the Node, alongside the hash of a value
  * (and not the value itself).
  */
-export class Node<K>
+export class Node<N extends number, K>
 {
   private readonly key: K;
   private valueHash: ValueDigest;
-  private ltPointer: Page<K>|null;
+  private ltPointer: Page<N, K>|null;
 
-  static new<K>(key: K, value: ValueDigest, ltPointer: Page<K>|null = null): Node<K>
-  {
-    return new Node<K>(key, value, ltPointer);
-  }
-
-  constructor(key: K, value: ValueDigest, ltPointer: Page<K>|null = null)
+  constructor(key: K, value: ValueDigest, ltPointer: Page<N, K>|null = null)
   {
     this.key       = key;
     this.valueHash = value;
     this.ltPointer = ltPointer;
   }
 
-  depthFirst<T extends Visitor<K>>(visitor: T): boolean
+  depthFirst<T extends Visitor<N, K>>(visitor: T): boolean
   {
     if (!visitor.preVisitNode(this))
     {
@@ -75,17 +70,17 @@ export class Node<K>
     this.valueHash = hash;
   }
 
-  getLtPointer(): Page<K>|null
+  getLtPointer(): Page<N, K>|null
   {
     return this.ltPointer;
   }
 
-  getLtPointerMut(): Page<K>|null
+  getLtPointerMut(): Page<N, K>|null
   {
     return this.ltPointer;
   }
 
-  setLtPointer(pointer: Page<K>|null): void
+  setLtPointer(pointer: Page<N, K>|null): void
   {
     this.ltPointer = pointer;
   }

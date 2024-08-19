@@ -21,14 +21,22 @@ export const UpsertResult = {
   InsertIntermediate: (k: any) => new InsertIntermediate(k),
 }
 
-export class Page<K>
+/**
+ * A group of [`Node`] instances at the same location within the tree.
+ *
+ * A page within an MST is a probabilistically sized structure, with varying
+ * numbers of [`Node`] within. A page has a min/max key range defined by the
+ * nodes within it, and the page hash acts as a content hash, describing the
+ * state of the page and the nodes within it.
+ */
+export class Page<N extends number, K>
 {
   level: number;
   treeHash: PageDigest|null;
-  nodes: Node<K>[];
-  highPage: Page<K>|null;
+  nodes: Node<N, K>[];
+  highPage: Page<N, K>|null;
 
-  constructor(level: number, nodes: Node<K>[])
+  constructor(level: number, nodes: Node<N, K>[])
   {
     this.level    = level;
     this.treeHash = null;
@@ -36,17 +44,12 @@ export class Page<K>
     this.highPage = null;
   }
 
-  setNull(): void
-  {
-    Object.assign(this, null);
-  }
-
   hash(): PageDigest|null
   {
     return this.treeHash;
   }
 
-  insertHighPage(p: Page<K>): void
+  insertHighPage(p: Page<N, K>): void
   {
     if (this.highPage !== null || p.nodes.length === 0)
     {
@@ -56,7 +59,7 @@ export class Page<K>
     this.highPage = p;
   }
 
-  inOrderTraversal<T extends Visitor<K>>(visitor: T, high_page: boolean): boolean
+  inOrderTraversal<T extends Visitor<N, K>>(visitor: T, high_page: boolean): boolean
   {
     if (!visitor.visitPage(this, high_page))
     {
@@ -93,23 +96,23 @@ export class Page<K>
     return this.nodes[0].getKey();
   }
 
-  // maxKey(): K
-  // {
-  //   if (this.nodes.length === 0)
-  //   {
-  //     throw new Error('No nodes in this page.');
-  //   }
-  //   return this.nodes[this.nodes.length - 1].getKey();
-  // }
-
   maxKey(): K
   {
-    return this.nodes.length > 0
-      ? this.nodes[this.nodes.length - 1].getKey()
-      : this.highPage
-        ? this.highPage.maxKey()
-        : (null as unknown as K);
+    if (this.nodes.length === 0)
+    {
+      throw new Error('No nodes in this page.');
+    }
+    return this.nodes[this.nodes.length - 1].getKey();
   }
+
+  // maxKey(): K
+  // {
+  //   return this.nodes.length > 0
+  //     ? this.nodes[this.nodes.length - 1].getKey()
+  //     : this.highPage
+  //       ? this.highPage.maxKey()
+  //       : (null as unknown as K);
+  // }
 
   minSubtreeKey(): K
   {
@@ -234,7 +237,7 @@ export class Page<K>
       }
 
       const ptr = this.nodes.findIndex((v) => key <= v.getKey());
-      let page: Page<K>|null;
+      let page: Page<N, K>|null;
 
       if (ptr !== -1)
       {
@@ -248,7 +251,7 @@ export class Page<K>
 
       if (!page)
       {
-        page = new Page<K>(level, []);
+        page = new Page<N, K>(level, []);
         if (ptr !== -1)
         {
           this.nodes[ptr].setLtPointer(page);
@@ -288,8 +291,11 @@ export class Page<K>
       return;
     }
 
-    const pageToSplit = idx !== -1 ? this.nodes[idx].getLtPointer() : this.highPage;
-    const newLtPage   = splitOffLt(pageToSplit, key);
+    let pageToSplit = idx !== -1 ? this.nodes[idx].getLtPointer() : this.highPage;
+    const newLtPage   = splitOffLt(pageToSplit, key, updatedPage =>
+    {
+      pageToSplit = updatedPage
+    });
 
     if (newLtPage)
     {
@@ -297,7 +303,10 @@ export class Page<K>
       console.assert(newLtPage.nodes.length > 0);
       console.assert(newLtPage.maxKey() < key);
 
-      const highPageLt   = splitOffLt(newLtPage.highPage, key);
+      const highPageLt   = splitOffLt(newLtPage.highPage, key, updatedPage =>
+      {
+        newLtPage.highPage = updatedPage;
+      });
       const gtePage      = newLtPage.highPage;
       newLtPage.highPage = highPageLt;
 
@@ -708,19 +717,25 @@ export function splitOffLt<K>(page: Page<K> | undefined, key: K): Page<K> | unde
   return ltPage;
 }*/
 
-export function insertIntermediatePage<K>(
-  child_page: Page<K>,
+export function insertIntermediatePage<N extends number, K>(
+  child_page: Page<N, K>,
   key: K,
   level: number,
   value: ValueDigest,
 ): void
 {
-  const lt_page = splitOffLt(child_page, key);
+  const lt_page = splitOffLt(child_page, key, updatedPage =>
+  {
+    child_page = updatedPage;
+  });
   let gte_page  = null;
 
   if (lt_page !== null)
   {
-    const high_page_lt = splitOffLt(lt_page.highPage, key);
+    const high_page_lt = splitOffLt(lt_page.highPage, key, updatedPage =>
+    {
+      lt_page.highPage = updatedPage;
+    });
     gte_page           = lt_page.highPage;
     lt_page.highPage   = high_page_lt;
   }

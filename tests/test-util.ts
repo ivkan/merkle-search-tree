@@ -1,5 +1,17 @@
 import { PageRange, MerkleSearchTree } from '../src';
 
+export class LevelKey<T>
+{
+  constructor(public key: T, public level: number)
+  {
+  }
+
+  toString(): string
+  {
+    return this.key.toString()
+  }
+}
+
 // An wrapper over integers, implementing `AsRef<[u8]>` with deterministic
 // output across platforms with differing endian-ness.
 export class IntKey extends Number
@@ -11,8 +23,8 @@ export class IntKey extends Number
   {
     super(v);
     let bigintValue = BigInt(v);
-    this.value = bigintValue;
-    this.bytes = new Uint8Array(8);
+    this.value      = bigintValue;
+    this.bytes      = new Uint8Array(8);
     for (let i = 0; i < 8; i++)
     {
       this.bytes[7 - i] = Number(bigintValue & 0xFFn);

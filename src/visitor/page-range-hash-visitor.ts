@@ -6,7 +6,7 @@ import { Node } from '../node';
 /**
  * Record the page range & hashes for the visited pages.
  */
-export class PageRangeHashVisitor<K extends Number> implements Visitor<K>
+export class PageRangeHashVisitor<N extends number, K> implements Visitor<N, K>
 {
   private readonly out: PageRange<K>[];
 
@@ -15,12 +15,12 @@ export class PageRangeHashVisitor<K extends Number> implements Visitor<K>
     this.out = [];
   }
 
-  visitNode(_node: Node<K>): boolean
+  visitNode(_node: Node<N, K>): boolean
   {
     return true;
   }
 
-  visitPage(page: Page<K>, _highPage: boolean): boolean
+  visitPage(page: Page<N, K>, _highPage: boolean): boolean
   {
     this.out.push(PageRange.fromPage(page));
     return true;

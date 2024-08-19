@@ -1,9 +1,9 @@
 import { Page } from './page';
 import { Node } from './node';
 
-export interface PageVisit<K>
+export interface PageVisit<N extends number, K>
 {
-  page: Page<K>;
+  page: Page<N, K>;
   // The 0-based index of the node to visit next in this page.
   idx: number;
   // The outcome of the last visit to this page.
@@ -28,14 +28,14 @@ export enum VisitState
 }
 
 // An iterator over Node, yielded in ascending key order.
-export class NodeIter<K> implements IterableIterator<Node<K>>
+export class NodeIter<N extends number, K> implements IterableIterator<Node<N, K>>
 {
   // A stack of visited pages as the iterator descends the tree.
   //
   // Approx log_{16}N max entries.
-  private stack: PageVisit<K>[];
+  private stack: PageVisit<N, K>[];
 
-  constructor(p: Page<K>)
+  constructor(p: Page<N, K>)
   {
     this.stack = [{
       page : p,
@@ -44,12 +44,12 @@ export class NodeIter<K> implements IterableIterator<Node<K>>
     }];
   }
 
-  [Symbol.iterator](): IterableIterator<Node<K>>
+  [Symbol.iterator](): IterableIterator<Node<N, K>>
   {
     return this;
   }
 
-  next(): IteratorResult<Node<K>>
+  next(): IteratorResult<Node<N, K>>
   {
     outer: while (true)
     {
