@@ -25,7 +25,6 @@ export function assertTree(input: any): void
     const dotVisitor = new DotVisitor();
     tree.inOrderTraversal(dotVisitor);
     const dot = dotVisitor.finalise();
-    console.log(dot);
 
     const assertOrderVisitor = new InvariantAssertOrder(new NopVisitor());
     tree.inOrderTraversal(assertOrderVisitor);

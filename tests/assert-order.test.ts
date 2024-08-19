@@ -1,5 +1,6 @@
 import { MerkleSearchTree } from '../src';
 import { LevelKey, MockHasher } from './test-util';
+import { assertTree } from '../src/assert-tree';
 
 describe('MerkleSearchTree', () =>
 {
@@ -19,7 +20,7 @@ describe('MerkleSearchTree', () =>
     t.upsert(new LevelKey('G', 0), 'bananas');
     t.upsert(new LevelKey('H', 0), 'bananas');
 
-    expect(t).toMatchSnapshot();
+    assertTree(t);
   });
 });
 

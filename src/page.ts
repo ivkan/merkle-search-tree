@@ -2,7 +2,7 @@ import { Node } from './node';
 import { PageDigest, ValueDigest } from './digest';
 import { Visitor } from './visitor';
 import { Hash } from 'crypto';
-import { splitOffLt } from './page-utils';
+import { insertIntermediatePage, splitOffLt } from './page-utils';
 
 export class InsertIntermediate<T>
 {
@@ -176,12 +176,181 @@ export class Page<N extends number, K>
     this.treeHash = new PageDigest(h.digest());
   }
 
-  /*upsert(key: K, level: number, value: ValueDigest): UpsertResult<K>
+  upsert(key: K, level: number, value: ValueDigest<N>): IUpsertResult<K>
+  {
+    if (level < this.level)
+    {
+      if (this.level !== 0)
+      {
+        console.assert(this.nodes.length > 0);
+      }
+
+      const ptr = this.nodes.findIndex((v) => key <= v.getKey());
+      let page: Page<N, K>|null;
+
+      if (ptr !== -1)
+      {
+        console.assert(this.nodes[ptr].getKey() > key);
+        page = this.nodes[ptr].getLtPointer();
+      }
+      else
+      {
+        page = this.highPage;
+      }
+
+      if (!page)
+      {
+        page = new Page<N, K>(level, []);
+        if (ptr !== -1)
+        {
+          this.nodes[ptr].setLtPointer(page);
+        }
+        else
+        {
+          this.highPage = page;
+        }
+      }
+
+      const result = page.upsert(key, level, value);
+      if (result instanceof InsertIntermediate && result.key === key)
+      {
+        insertIntermediatePage(page, key, level, value);
+      }
+    }
+    else if (level === this.level)
+    {
+      this.upsertNode(key, value);
+    }
+    else
+    {
+      return new InsertIntermediate(key);
+    }
+
+    this.treeHash = null;
+    return UpsertResult.Complete;
+  }
+
+  upsertNode(key: K, value: ValueDigest<N>): void
+  {
+    const idx = this.nodes.findIndex((v) => key <= v.getKey());
+
+    if (idx !== -1 && this.nodes[idx].getKey() === key)
+    {
+      this.nodes[idx].updateValueHash(value);
+      return;
+    }
+
+    let pageToSplit = idx !== -1 ? this.nodes[idx].getLtPointer() : this.highPage;
+    const newLtPage = splitOffLt(pageToSplit, key, updatedPage =>
+    {
+      pageToSplit = updatedPage;
+    });
+
+    if (newLtPage)
+    {
+      console.assert(this.level > newLtPage.level);
+      console.assert(newLtPage.nodes.length > 0);
+      console.assert(newLtPage.maxKey() < key);
+
+      const highPageLt   = splitOffLt(newLtPage.highPage, key, updatedPage =>
+      {
+        newLtPage.highPage = updatedPage;
+      });
+      const gtePage      = newLtPage.highPage;
+      newLtPage.highPage = highPageLt;
+
+      if (gtePage)
+      {
+        console.assert(this.level > gtePage.level);
+        console.assert(gtePage.nodes.length > 0);
+        console.assert(gtePage.maxKey() > key);
+
+        this.insertHighPage(gtePage);
+      }
+    }
+
+    const newNode = new Node(key, value, newLtPage);
+    this.nodes.splice(idx === -1 ? this.nodes.length : idx, 0, newNode);
+  }
+
+  /*upsert(key: K, level: number, value: ValueDigest<N>): IUpsertResult<K> {
+    const compare = (value1: number, value2: number) =>
+      value1 > value2 ? 1 : value1 === value2 ? 0 : -1
+
+    switch (compare(level, this.level)) {
+      case -1:
+        if (this.level === 0) {
+          throw new Error("Level cannot be zero.")
+        }
+        if (this.nodes.length === 0) {
+          throw new Error("No nodes in this page.")
+        }
+
+        const ptr = this.nodes.findIndex((v) => key > v.getKey())
+        const page = this.nodes[ptr]
+          ? this.nodes[ptr].getLtPointerMut()
+          : this.highPage
+
+        const pageRef = page || new Page<N, K>(level, [])
+        if (
+          pageRef.upsert(key, level, value) instanceof
+          UpsertResult.InsertIntermediate
+        ) {
+          insertIntermediatePage(pageRef, key, level, value)
+        }
+        break
+      case 0:
+        this.upsertNode(key, value)
+        break
+      case 1:
+        return new UpsertResult.InsertIntermediate(key)
+    }
+    this.treeHash = undefined
+
+    return UpsertResult.Complete
+  }
+
+  upsertNode(key: K, value: ValueDigest<N>): void {
+    const idx = this.nodes.findIndex((v) => key > v.getKey())
+
+    let page_to_split =
+            this.nodes[idx]?.getKey() === key
+              ? this.nodes[idx].updateValueHash(value)
+              : this.nodes[idx]?.getLtPointerMut() || this.highPage
+
+    const new_lt_page = splitOffLt(page_to_split, key, updatedPage =>
+    {
+      page_to_split = updatedPage;
+    });
+
+    if (new_lt_page) {
+      if (this.level <= new_lt_page.level) {
+        throw new Error("Invalid page levels.")
+      }
+      if (new_lt_page.nodes.length === 0) {
+        throw new Error("No nodes in new page.")
+      }
+      if (new_lt_page.maxKey() >= key) {
+        throw new Error("Max key in new page must be less than key.")
+      }
+
+      // const high_page_lt = split_off_lt(new_lt_page.high_page, key)
+      const gte_page = new_lt_page.highPage
+      if (gte_page) {
+        this.insertHighPage(gte_page)
+      }
+    }
+
+    this.nodes.splice(idx, 0, new Node(key, value, new_lt_page))
+  }*/
+
+
+  /*upsert(key: K, level: number, value: ValueDigest<N>): IUpsertResult<K>
   {
     if (level < this.level)
     {
       const ptr      = this.nodes.findIndex(v => key > v.getKey());
-      const page     = ptr !== -1 ? this.nodes[ptr].getLtPointer() : this.high_page;
+      const page     = ptr !== -1 ? this.nodes[ptr].getLtPointer() : this.highPage;
       const page_ref = page ?? new Page(level, []);
       if (page_ref.upsert(key, level, value) === UpsertResult.InsertIntermediate(key))
       {
@@ -197,21 +366,27 @@ export class Page<N extends number, K>
       return UpsertResult.InsertIntermediate(key);
     }
 
-    this.tree_hash = null;
+    this.treeHash = null;
     return UpsertResult.Complete;
   }*/
 
-  /*upsertNode(key: K, value: ValueDigest): void
+  /*upsertNode(key: K, value: ValueDigest<N>): void
   {
     const idx           = this.nodes.findIndex(v => key > v.getKey());
-    const page_to_split = idx !== -1 ? this.nodes[idx].getLtPointer() : this.high_page;
+    let page_to_split = idx !== -1 ? this.nodes[idx].getLtPointer() : this.highPage;
 
-    let new_lt_page = split_off_lt(page_to_split, key)?.map(Box.new);
+    let new_lt_page = splitOffLt(page_to_split, key, updatedPage =>
+    {
+      page_to_split = updatedPage;
+    });
 
     if (new_lt_page !== undefined)
     {
       const lt_page      = new_lt_page.value;
-      const high_page_lt = split_off_lt(lt_page.high_page, key);
+      const high_page_lt = splitOffLt(lt_page.high_page, key, updatedPage =>
+      {
+        lt_page.high_page = updatedPage;
+      });
       const gte_page     = lt_page.high_page;
       lt_page.high_page  = high_page_lt?.map(Box.new);
       if (gte_page !== undefined)
@@ -223,7 +398,7 @@ export class Page<N extends number, K>
     this.nodes.splice(idx, 0, new Node(key, value, new_lt_page));
   }*/
 
-  upsert(key: K, level: number, value: ValueDigest<N>): IUpsertResult<K>
+  /*upsert(key: K, level: number, value: ValueDigest<N>): IUpsertResult<K>
   {
     if (level < this.level)
     {
@@ -322,7 +497,7 @@ export class Page<N extends number, K>
 
     const newNode = new Node(key, value, newLtPage);
     this.nodes.splice(idx !== -1 ? idx : this.nodes.length, 0, newNode);
-  }
+  }*/
 }
 
 /*export function splitOffLt<T, K>(page: T|null, key: K): Page<K>|null
@@ -717,47 +892,6 @@ export function splitOffLt<K>(page: Page<K> | undefined, key: K): Page<K> | unde
   return ltPage;
 }*/
 
-export function insertIntermediatePage<N extends number, K>(
-  child_page: Page<N, K>,
-  key: K,
-  level: number,
-  value: ValueDigest<N>,
-): void
-{
-  const lt_page = splitOffLt(child_page, key, updatedPage =>
-  {
-    child_page = updatedPage;
-  });
-  let gte_page  = null;
-
-  if (lt_page !== null)
-  {
-    const high_page_lt = splitOffLt(lt_page.highPage, key, updatedPage =>
-    {
-      lt_page.highPage = updatedPage;
-    });
-    gte_page           = lt_page.highPage;
-    lt_page.highPage   = high_page_lt;
-  }
-
-  const node              = new Node(key, value, null);
-  const intermediate_page = new Page(level, [node]);
-
-  if (gte_page !== null)
-  {
-    intermediate_page.insertHighPage(gte_page);
-  }
-
-  const gte_page_ref = child_page;
-  child_page.nodes[0].setLtPointer(
-    lt_page
-  );
-
-  if (gte_page_ref.nodes.length > 0)
-  {
-    child_page.highPage = gte_page_ref;
-  }
-}
 
 /*export function insertIntermediatePage<K>(
   childPage: Page<K>,

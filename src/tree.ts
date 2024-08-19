@@ -1,10 +1,11 @@
 import { Digest, Hasher, SipHasher, RootHash, ValueDigest } from './digest';
-import { InsertIntermediate, insertIntermediatePage, Page } from './page';
+import { InsertIntermediate, Page } from './page';
 import { Node } from './node';
 import { NodeIter } from './node-iter';
 import { createHash, Hash } from 'crypto';
 import { PageRangeHashVisitor, Visitor } from './visitor';
 import { PageRange } from './diff';
+import { insertIntermediatePage } from './page-utils';
 
 /**
  * An implementation of the Merkle Search Tree as described in [Merkle Search
@@ -85,10 +86,19 @@ import { PageRange } from './diff';
  */
 export class MerkleSearchTree<K, V, N extends number = 16>
 {
+  // User-provided hasher implementation used for key/value digests.
   hasher: Hasher<N, V|K>;
+
+  // Internal hasher used to produce page/root digests.
   treeHasher: Hash;
+
   root: Page<N, K>;
   _rootHash: RootHash|null;
+
+  static default<K extends Number, V>(): MerkleSearchTree<K, V>
+  {
+    return new MerkleSearchTree<K, V>();
+  }
 
   constructor(hasher?: Hasher<N, V>)
   {
@@ -98,11 +108,12 @@ export class MerkleSearchTree<K, V, N extends number = 16>
     this._rootHash  = null;
   }
 
-  static default<K extends Number, V>(): MerkleSearchTree<K, V>
-  {
-    return new MerkleSearchTree<K, V>();
-  }
-
+  /**
+   * Return the precomputed root hash, if any.
+   *
+   * This method never performs any hashing - if there's no precomputed hash
+   * available, this immediately returns null.
+   */
   rootHashCached(): RootHash|null
   {
     return this._rootHash;
@@ -113,12 +124,17 @@ export class MerkleSearchTree<K, V, N extends number = 16>
     this.root.inOrderTraversal(visitor, false);
   }
 
+  /**
+   * Iterate over all [`Node`] in the tree in ascending key order.
+   *
+   * This method can be used to inspect the keys stored in the tree:
+   */
   nodeIter(): NodeIter<N, K>
   {
     return new NodeIter<N, K>(this.root);
   }
 
-  rootHash(): RootHash
+  /*rootHash(): RootHash
   {
     this.root.maybeGenerateHash(this.treeHasher);
     const rootPageDigest = this.root.hash()?.clone();
@@ -135,6 +151,28 @@ export class MerkleSearchTree<K, V, N extends number = 16>
     }
 
     return this._rootHash;
+  }*/
+
+  /**
+   * Generate the root hash if necessary, returning the result.
+   *
+   * If there's a precomputed root hash, it is immediately returned.
+   *
+   * If no cached root hash is available all tree pages with modified child
+   * nodes are rehashed and the resulting new root hash is returned.
+   */
+  rootHash(): RootHash
+  {
+    this.root.maybeGenerateHash(this.treeHasher);
+    const rootPageDigest = this.root.hash()?.clone();
+    this._rootHash       = !!rootPageDigest ? new RootHash(rootPageDigest) : null;
+
+    if (process.env.NODE_ENV === 'development')
+    {
+      console.debug(`regenerated root hash: ${this._rootHash}`);
+    }
+
+    return this._rootHash!;
   }
 
   serialisePageRanges(): PageRange<K>[]|null
@@ -154,20 +192,58 @@ export class MerkleSearchTree<K, V, N extends number = 16>
     return visitor.finalise();
   }
 
-  upsert(key: K, value: V): void
+  /*upsert(key: K, value: V): void
   {
     const valueHash = new ValueDigest(this.hasher.hash(value));
     const level     = Digest.level(this.hasher.hash(key));
 
+    // Invalidate the root hash - it always changes when a key is upserted.
     this.rootHash = null;
 
     const result = this.root.upsert(key, level, valueHash.clone());
     if (result instanceof InsertIntermediate && result.key === key)
     {
+      // As an optimisation and simplification, if the current root is
+      // empty, simply replace it with the new root.
       if (this.root.nodes.length === 0)
       {
         const node = new Node(key, valueHash, null);
         this.root  = new Page<N, K>(level, [node]);
+        return;
+      }
+
+      insertIntermediatePage(this.root, key, level, valueHash);
+    }
+  }*/
+
+  /**
+   * Add or update the value for `key`.
+   *
+   * This method invalidates the cached, precomputed root hash value, if any
+   * (even if the value is not modified).
+   *
+   * # Value Hash
+   *
+   * The tree stores a the hashed representation of `value` - the actual
+   * value is not stored in the tree.
+   */
+  upsert(key: K, value: V): void
+  {
+    const valueHash = new ValueDigest(this.hasher.hash(value));
+    const level     = Digest.level(this.hasher.hash(key));
+
+    // Invalidate the root hash - it always changes when a key is upserted.
+    this.rootHash = null;
+
+    const upsertResult = this.root.upsert(key, level, valueHash);
+    if (upsertResult instanceof InsertIntermediate && upsertResult.key === key)
+    {
+      // As an optimisation and simplification, if the current root is
+      // empty, simply replace it with the new root.
+      if (this.root.nodes.length === 0)
+      {
+        const node = new Node(key, valueHash, null);
+        this.root  = new Page(level, [node]);
         return;
       }
 

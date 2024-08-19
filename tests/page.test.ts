@@ -209,8 +209,6 @@ describe('Page Split Tests', () =>
     p.upsert(1, 0, MOCK_VALUE);
     p.upsert(2, 1, MOCK_VALUE);
 
-    console.log(p);
-
     assertTree(p);
   });
 
