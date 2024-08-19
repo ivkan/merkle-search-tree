@@ -1,5 +1,6 @@
 import { Digest, PageDigest, ValueDigest } from '../src';
 import { Page, Node, splitOffLt } from '../src';
+import { assertTree } from '../src/assert-tree';
 
 const MOCK_VALUE: ValueDigest<1>    = new ValueDigest(new Digest(new Uint8Array(1).fill(0)));
 const MOCK_PAGE_HASH: PageDigest = new PageDigest(new Uint8Array(16).fill(0));
@@ -201,15 +202,17 @@ describe('Page Split Tests', () =>
     ]);
   });
 
-  // test('test_upsert_less_than_split_child', () =>
-  // {
-  //   let p = new Page(1, [new Node(4, MOCK_VALUE, null)]);
-  //   p.upsert(3, 0, MOCK_VALUE);
-  //   p.upsert(1, 0, MOCK_VALUE);
-  //   p.upsert(2, 1, MOCK_VALUE);
-  //
-  //   assertTree(p);
-  // });
+  test('test_upsert_less_than_split_child', () =>
+  {
+    let p = new Page(1, [new Node(4, MOCK_VALUE, null)]);
+    p.upsert(3, 0, MOCK_VALUE);
+    p.upsert(1, 0, MOCK_VALUE);
+    p.upsert(2, 1, MOCK_VALUE);
+
+    console.log(p);
+
+    assertTree(p);
+  });
 
   test('test_split_page_recursive_lt_pointer', () =>
   {

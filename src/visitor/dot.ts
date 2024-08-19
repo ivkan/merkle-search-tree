@@ -22,7 +22,7 @@ interface ParentPage
 
 type ParentType = ParentNode|ParentPage;
 
-export class DotVisitor<K extends number>
+export class DotVisitor<N extends number, K>
 {
   private buf: string;
   private pageCount: number;
@@ -37,7 +37,7 @@ export class DotVisitor<K extends number>
     this.pageBufs  = [];
   }
 
-  visitPage(page: Page<K>, highPage: boolean): boolean
+  visitPage(page: Page<N, K>, highPage: boolean): boolean
   {
     let buf = '';
 
@@ -71,7 +71,7 @@ export class DotVisitor<K extends number>
     return true;
   }
 
-  postVisitPage(page: Page<K>): boolean
+  postVisitPage(page: Page<N, K>): boolean
   {
     let buf = this.pageBufs.pop()!;
 
@@ -96,7 +96,7 @@ export class DotVisitor<K extends number>
     return true;
   }
 
-  preVisitNode(node: Node<K>): boolean
+  preVisitNode(node: Node<N, K>): boolean
   {
     const pageId = this.linkStack
       .slice()
@@ -112,7 +112,7 @@ export class DotVisitor<K extends number>
     return true;
   }
 
-  visitNode(node: Node<K>): boolean
+  visitNode(node: Node<N, K>): boolean
   {
     const buf = this.pageBufs[this.pageBufs.length - 1];
 
@@ -122,7 +122,7 @@ export class DotVisitor<K extends number>
     return true;
   }
 
-  postVisitNode(_node: Node<K>): boolean
+  postVisitNode(_node: Node<N, K>): boolean
   {
     this.linkStack.pop();
     return true;
