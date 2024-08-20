@@ -1,5 +1,14 @@
-import { createHash, Hash } from 'crypto';
+import { Hash } from '@noble/hashes/utils'
+import { sha256 } from '@noble/hashes/sha256'
 import { Digest } from './digest';
+import { isUint8Array } from '../utils/is-uint8array';
+
+export interface HasherInputStringify
+{
+  toString(): string;
+}
+
+export type HasherInput = Uint8Array|string|number|HasherInputStringify;
 
 /**
  * A hash function outputting a fixed-length digest of `N` bytes.
@@ -26,52 +35,44 @@ import { Digest } from './digest';
  * key/value user input is used in a tree in order to prevent chosen-hash
  * collision attacks.
  */
-export interface Hasher<N extends number, T> {
+export interface Hasher<N extends number>
+{
   /**
    * Hash `T`, producing a unique, deterministic digest of `N` bytes length.
    */
-  hash(value: T): Digest<N>
+  hash(value: HasherInput): Digest<N>
 }
 
 // A fast, non-cryptographic hash outputting 128-bit digests.
-export class SipHasher implements Hasher<16, Uint8Array>
+export class SipHasher<N extends number = 16> implements Hasher<N>
 {
-  private hasher: Hash;
+  private hasher: Hash<any>;
 
-  static new(key: Uint8Array): SipHasher
+  constructor(outputLen = 16)
   {
-    return new SipHasher(key);
+    this.hasher           = sha256.create();
+    this.hasher.outputLen = outputLen;
   }
 
-  constructor(key?: Uint8Array)
+  hash(value: HasherInput): Digest<16>
   {
-    if (key && key.length === 16)
-    {
-      // In TypeScript, we'll use a simple hash function as an example
-      // You might want to use a more sophisticated hashing algorithm in practice
-      this.hasher = createHash('sha256');
-      this.hasher.update(key);
-    }
-    else
-    {
-      this.hasher = createHash('sha256');
-    }
-  }
-
-  hash(value: any): Digest<16>
-  {
-    const hash = this.hasher.copy();
-    hash.update(
-      typeof value === 'string'
-        ? value
-        : typeof value === 'number'
-          ? value.toString()
-          : JSON.stringify(value)
-    );
-    const result = hash.digest().slice(0, 16);
+    const hash = this.hasher.clone();
+    hash.update(convertHashInput(value));
+    const result = hash.digest();
 
     return new Digest(result);
   }
 }
 
+function convertHashInput(value: HasherInput): string|Uint8Array
+{
+  if (isUint8Array(value) || typeof value === 'string')
+  {
+    return value;
+  }
+  else if (typeof value?.toString === 'function')
+  {
+    return value.toString();
+  }
+}
 

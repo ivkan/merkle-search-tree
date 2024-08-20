@@ -10,9 +10,11 @@ export function insertIntermediatePage<N extends number, K>(
   value: ValueDigest<N>,
 ): void
 {
+  console.log(1, child_page);
   const lt_page = splitOffLt(child_page, key, updatedPage =>
   {
     child_page = updatedPage;
+    console.log(2, key, child_page);
   });
   let gte_page  = null;
 

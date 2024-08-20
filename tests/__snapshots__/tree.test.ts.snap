@@ -1,0 +1,243 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`MerkleSearchTree test_child_page_split_add_intermediate 1`] = `
+"digraph g {
+	page_1:K -> page_2:head;
+	page_2 [shape=record, label="<head>Level 0|<D>·|D"]
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 2|<K>·|K"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_equal_page_move_all_nodes_and_high_page 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 64|<2>·|2|<4>·|4|<high_page>·"]
+	page_1:high_page -> page_2:head [fontcolor=red color=red label="high page"];
+	page_2 [shape=record, label="<head>Level 20|<5>·|5"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_equal_page_move_all_nodes_and_high_page_subset 1`] = `
+"digraph g {
+	page_1:5 -> page_2:head;
+	page_2 [shape=record, label="<head>Level 20|<4>·|4"]
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 64|<2>·|2|<5>·|5|<high_page>·"]
+	page_1:high_page -> page_3:head [fontcolor=red color=red label="high page"];
+	page_3 [shape=record, label="<head>Level 20|<4>·|4"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_greatest_key_splits_high_page 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 1|<11>·|11"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_insert_intermediate_recursive_lt_pointer 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 1|<1>·|1|<high_page>·"]
+	page_1:high_page -> page_2:head [fontcolor=red color=red label="high page"];
+	page_2 [shape=record, label="<head>Level 0|<2>·|2"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_intermediate_page_move_all_nodes_and_high_page 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 1|<1>·|1|<2>·|2"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_intermediate_page_move_all_nodes_and_high_page_subset 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 1|<1>·|1|<2>·|2|<high_page>·"]
+	page_1:high_page -> page_2:head [fontcolor=red color=red label="high page"];
+	page_2 [shape=record, label="<head>Level 0|<3>·|3"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_non_root_page_split_gt 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 6|<A>·|A|<high_page>·"]
+	page_1:high_page -> page_2:head [fontcolor=red color=red label="high page"];
+	page_2 [shape=record, label="<head>Level 4|<B>·|B|<high_page>·"]
+	page_2:high_page -> page_3:head [fontcolor=red color=red label="high page"];
+	page_3 [shape=record, label="<head>Level 2|<C>·|C"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_non_root_page_split_lt 1`] = `
+"digraph g {
+	page_2:B -> page_3:head;
+	page_3 [shape=record, label="<head>Level 2|<A>·|A"]
+	page_1:C -> page_2:head;
+	page_2 [shape=record, label="<head>Level 4|<B>·|B"]
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 6|<C>·|C"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_one 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 0|<key>·|key"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_one_non_zero_level 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 4|<key>·|key"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_root_split_non_zero_step_gt 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 3|<A>·|A"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_root_split_non_zero_step_lt 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 3|<B>·|B"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_root_split_page_gt 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 0|<A>·|A"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_root_split_page_lt 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 0|<B>·|B"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_split_child_into_two_empty_gte_page 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 5|<A>·|A|<high_page>·"]
+	page_1:high_page -> page_2:head [fontcolor=red color=red label="high page"];
+	page_2 [shape=record, label="<head>Level 0|<B>·|B|<C>·|C"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_split_child_into_two_with_gte_page 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 5|<A>·|A|<high_page>·"]
+	page_1:high_page -> page_2:head [fontcolor=red color=red label="high page"];
+	page_2 [shape=record, label="<head>Level 0|<B>·|B|<C>·|C"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_split_page_all_gte_nodes_with_lt_pointer 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 0|<1>·|1"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_split_page_all_lt_nodes_with_high_page 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 0|<0>·|0"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_split_page_move_gte_lt_pointer_to_high_page 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 1|<1>·|1|<high_page>·"]
+	page_1:high_page -> page_2:head [fontcolor=red color=red label="high page"];
+	page_2 [shape=record, label="<head>Level 0|<2>·|2"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_split_page_move_input_high_page_to_gte_page 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 0|<6>·|6"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_two_in_order 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 0|<A>·|A|<B>·|B"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_two_unordered 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 0|<A>·|A|<B>·|B"]
+}
+"
+`;
+
+exports[`MerkleSearchTree test_update 1`] = `
+"digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 6|<A>·|A|<A>·|A"]
+}
+"
+`;

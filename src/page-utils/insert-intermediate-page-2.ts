@@ -3,21 +3,21 @@ import { Node } from '../node';
 import { splitOffLt } from './split-of-lt';
 import { ValueDigest } from '../digest';
 
-export function insertIntermediatePage<N extends number, K, T extends {deref(): Page<N, K>}>(
-  childPage: T,
+export function insertIntermediatePage<N extends number, K>(
+  childPage: Page<N, K>,
   key: K,
   level: number,
   value: ValueDigest<N>
 ): void
 {
   // Debug assertions
-  console.assert(childPage.deref().level < level);
-  console.assert(childPage.deref().nodes.length > 0);
+  console.assert(childPage.level < level);
+  console.assert(childPage.nodes.length > 0);
 
   // Split the child page
-  let ltPage: Page<N, K>|undefined = splitOffLt(childPage.deref(), key, updatedPage =>
+  let ltPage: Page<N, K>|undefined = splitOffLt(childPage, key, updatedPage =>
   {
-
+    childPage = updatedPage;
   });
 
   let gtePage: Page<N, K>|undefined;
@@ -29,7 +29,7 @@ export function insertIntermediatePage<N extends number, K, T extends {deref(): 
 
     const highPageLt = splitOffLt(ltPage.highPage, key, updatedPage =>
     {
-
+      ltPage.highPage = updatedPage;
     });
     gtePage          = ltPage.highPage;
     ltPage.highPage  = highPageLt;
@@ -54,7 +54,7 @@ export function insertIntermediatePage<N extends number, K, T extends {deref(): 
 
   // Replace the page pointer at this level to point to the new page, taking
   // the page that now contains the lt nodes after the split.
-  const gtePage2  = childPage.deref();
+  const gtePage2  = childPage;
 
   // At this point, we have this structure:
   //
@@ -70,11 +70,11 @@ export function insertIntermediatePage<N extends number, K, T extends {deref(): 
   // The lt_page and gtw_pages need linking into the new node within the new
   // intermediate page.
 
-  childPage.deref = () => intermediatePage;
+  childPage = intermediatePage;
 
   // Link the pages
   intermediatePage.nodes[0].setLtPointer(ltPage);
-  if (gtePage2.nodes.length > 0)
+  if (gtePage2?.nodes.length > 0)
   {
     console.assert(gtePage2.maxKey() > intermediatePage.nodes[0].getKey());
     console.assert(level > gtePage2.level);

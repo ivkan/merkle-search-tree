@@ -62,4 +62,9 @@ export class InvariantAssertCount<T extends Visitor<N, K>, N extends number, K>
   {
     return this.inner.postVisitPage(page)
   }
+
+  getCount(): number
+  {
+    return this.count;
+  }
 }

@@ -1,7 +1,7 @@
+import { Hash } from '@noble/hashes/utils';
 import { Node } from './node';
 import { PageDigest, ValueDigest } from './digest';
 import { Visitor } from './visitor';
-import { Hash } from 'crypto';
 import { insertIntermediatePage, splitOffLt } from './page-utils';
 
 export class InsertIntermediate<T>
@@ -133,14 +133,14 @@ export class Page<N extends number, K>
     return this.maxKey();
   }
 
-  maybeGenerateHash(hasher: Hash): void
+  maybeGenerateHash(hasher: Hash<any>): void
   {
     if (this.treeHash !== null)
     {
       return;
     }
 
-    let h = hasher.copy();
+    let h = hasher.clone();
 
     // Hash all nodes & their child pages
     for (const n of this.nodes)
@@ -158,7 +158,10 @@ export class Page<N extends number, K>
       }
 
       // Hash the node value itself
-      h.update(n.getKey() as string);
+      // console.log(n.getKey());
+      h.update(
+        typeof n.getKey()?.toString === 'function' ? n.getKey().toString() : n.getKey() as string
+      );
       h.update(n.getValueHash().valueOf().asBytes());
     }
 

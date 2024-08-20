@@ -1,11 +1,12 @@
-import { Digest, Hasher, SipHasher, RootHash, ValueDigest } from './digest';
+import { Digest, Hasher, SipHasher, RootHash, ValueDigest, HasherInput } from './digest';
 import { InsertIntermediate, Page } from './page';
 import { Node } from './node';
 import { NodeIter } from './node-iter';
-import { createHash, Hash } from 'crypto';
 import { PageRangeHashVisitor, Visitor } from './visitor';
 import { PageRange } from './diff';
 import { insertIntermediatePage } from './page-utils';
+import { Hash } from '@noble/hashes/utils';
+import { sha256 } from '@noble/hashes/sha256';
 
 /**
  * An implementation of the Merkle Search Tree as described in [Merkle Search
@@ -84,13 +85,13 @@ import { insertIntermediatePage } from './page-utils';
  *
  * [paper]: https://inria.hal.science/hal-02303490
  */
-export class MerkleSearchTree<K, V, N extends number = 16>
+export class MerkleSearchTree<K extends HasherInput, V extends HasherInput, N extends number = 16>
 {
   // User-provided hasher implementation used for key/value digests.
-  hasher: Hasher<N, V|K>;
+  hasher: Hasher<N>;
 
   // Internal hasher used to produce page/root digests.
-  treeHasher: Hash;
+  treeHasher: Hash<any>;
 
   root: Page<N, K>;
   _rootHash: RootHash|null;
@@ -100,10 +101,10 @@ export class MerkleSearchTree<K, V, N extends number = 16>
     return new MerkleSearchTree<K, V>();
   }
 
-  constructor(hasher?: Hasher<N, V>)
+  constructor(hasher?: Hasher<N>)
   {
-    this.hasher     = hasher || new SipHasher();
-    this.treeHasher = createHash('sha256');
+    this.hasher     = hasher || new SipHasher<16>();
+    this.treeHasher = sha256.create();
     this.root       = new Page<N, K>(0, []);
     this._rootHash  = null;
   }
@@ -119,6 +120,12 @@ export class MerkleSearchTree<K, V, N extends number = 16>
     return this._rootHash;
   }
 
+  /**
+   * Perform a depth-first, in-order traversal, yielding each [`Page`] and
+   * [`Node`] to `visitor`.
+   *
+   * An in-order traversal yields nodes in key order, from min to max.
+   */
   inOrderTraversal<T extends Visitor<N, K>>(visitor: T): void
   {
     this.root.inOrderTraversal(visitor, false);
@@ -133,25 +140,6 @@ export class MerkleSearchTree<K, V, N extends number = 16>
   {
     return new NodeIter<N, K>(this.root);
   }
-
-  /*rootHash(): RootHash
-  {
-    this.root.maybeGenerateHash(this.treeHasher);
-    const rootPageDigest = this.root.hash()?.clone();
-    this._rootHash       = !!rootPageDigest ? new RootHash(rootPageDigest) : null;
-
-    if (this.rootHash)
-    {
-      console.debug('regenerated root hash', this.rootHash);
-    }
-
-    if (!this.rootHash)
-    {
-      throw new Error('Root hash is not available');
-    }
-
-    return this._rootHash;
-  }*/
 
   /**
    * Generate the root hash if necessary, returning the result.
@@ -175,6 +163,56 @@ export class MerkleSearchTree<K, V, N extends number = 16>
     return this._rootHash!;
   }
 
+  /**
+   * Serialise the key interval and hash covering each [`Page`] within this
+   * tree.
+   *
+   * Page hashes are generated on demand - this method returns [`None`] if
+   * the tree needs rehashing (call [`MerkleSearchTree::root_hash()`] and
+   * retry).
+   *
+   * Performs a pre-order traversal of all pages within this tree and emits a
+   * [`PageRange`] per page that covers the min/max key of the subtree at the
+   * given page.
+   *
+   * The first page is the tree root, and as such has a key min/max that
+   * equals the min/max of the keys stored within this tree.
+   *
+   * # Reference vs. Owned
+   *
+   * This method borrows the underlying keys within the tree - this avoids
+   * cloning the keys that form the page bounds when generating the
+   * [`PageRange`] to maximise performance, however this also prevents the
+   * caller from mutating the tree whilst holding onto the serialised pages
+   * (an immutable reference to the tree).
+   *
+   * If the key type (`K`) implements [`Clone`], a set of owned serialised
+   * pages that do not borrow from the tree can be created by constructing a
+   * [`PageRangeSnapshot`] from the returned [`PageRange`] array:
+   *
+   * ```
+   * let mut t = MerkleSearchTree.default();
+   * t.upsert("bananas", 42);
+   *
+   * // Rehash the tree before generating the page ranges
+   * let _ = t.rootHash();
+   *
+   * // Generate the hashes & page ranges
+   * let ranges = t.serialisePageRanges();
+   *
+   * // At this point, attempting to insert into the tree fails because the
+   * // tree is already borrowed as immutable.
+   * //
+   * // Instead clone all the keys and generate a snapshot:
+   * let snap = PageRangeSnapshot.from(ranges);
+   *
+   * // And the tree is free to be mutated while `snap` exists!
+   * t.upsert("plátanos", 42);
+   *
+   * // The `snap` yields `PageRange` for iteration:
+   * diff(snap.iter(), snap.iter()).length === 0;
+   * ```
+   */
   serialisePageRanges(): PageRange<K>[]|null
   {
     if (!this.rootHashCached())
@@ -191,30 +229,6 @@ export class MerkleSearchTree<K, V, N extends number = 16>
     this.root.inOrderTraversal(visitor, false);
     return visitor.finalise();
   }
-
-  /*upsert(key: K, value: V): void
-  {
-    const valueHash = new ValueDigest(this.hasher.hash(value));
-    const level     = Digest.level(this.hasher.hash(key));
-
-    // Invalidate the root hash - it always changes when a key is upserted.
-    this.rootHash = null;
-
-    const result = this.root.upsert(key, level, valueHash.clone());
-    if (result instanceof InsertIntermediate && result.key === key)
-    {
-      // As an optimisation and simplification, if the current root is
-      // empty, simply replace it with the new root.
-      if (this.root.nodes.length === 0)
-      {
-        const node = new Node(key, valueHash, null);
-        this.root  = new Page<N, K>(level, [node]);
-        return;
-      }
-
-      insertIntermediatePage(this.root, key, level, valueHash);
-    }
-  }*/
 
   /**
    * Add or update the value for `key`.
@@ -233,7 +247,7 @@ export class MerkleSearchTree<K, V, N extends number = 16>
     const level     = Digest.level(this.hasher.hash(key));
 
     // Invalidate the root hash - it always changes when a key is upserted.
-    this.rootHash = null;
+    this._rootHash = null;
 
     const upsertResult = this.root.upsert(key, level, valueHash);
     if (upsertResult instanceof InsertIntermediate && upsertResult.key === key)

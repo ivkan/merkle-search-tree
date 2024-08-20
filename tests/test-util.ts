@@ -1,4 +1,5 @@
 import { PageRange, MerkleSearchTree, Digest } from '../src';
+import { createHash } from 'crypto';
 
 export class MockHasher
 {
@@ -58,11 +59,6 @@ export class IntKey extends Number
       this.bytes[7 - i] = Number(bigintValue & 0xFFn);
       bigintValue >>= 8n;
     }
-  }
-
-  static new(v: bigint): IntKey
-  {
-    return new IntKey(v);
   }
 
   unwrap(): bigint
@@ -137,6 +133,32 @@ export class Node
   {
     return this.store[Symbol.iterator]();
   }
+}
+
+export class FixtureHasher
+{
+  hash(value: number): Digest<16>
+  {
+    const hash = createHash('sha256');
+    hash.update(value.toString());
+    return new Digest(hash.digest());
+  }
+}
+
+export function assertNodeEqual<K, V>(a: MerkleSearchTree<K, V>, b: MerkleSearchTree<K, V>): void
+{
+  expect(a.rootHash()).toEqual(b.rootHash());
+  expect(a.serialisePageRanges()).toEqual(b.serialisePageRanges());
+  expect(b.rootHashCached()).toEqual(b.rootHash());
+  expect(a.rootHashCached()).toEqual(a.rootHash());
+}
+
+export function assertNodeNotEqual<K, V>(a: MerkleSearchTree<K, V>, b: MerkleSearchTree<K, V>): void
+{
+  expect(a.rootHash()).not.toEqual(b.rootHash());
+  expect(a.serialisePageRanges()).not.toEqual(b.serialisePageRanges());
+  expect(b.rootHashCached()).toEqual(b.rootHash());
+  expect(a.rootHashCached()).toEqual(a.rootHash());
 }
 
 
