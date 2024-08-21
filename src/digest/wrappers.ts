@@ -5,7 +5,7 @@ import { Digest } from './digest';
  * tree.
  *
  * Two instances of a `MerkleSearchTree` are guaranteed to contain the same
- * state iff both `RootHash` read from the trees are identical (assuming
+ * state if both `RootHash` read from the trees are identical (assuming
  * identical, deterministic `Hasher` implementations).
  */
 export class RootHash
@@ -38,7 +38,7 @@ export class PageDigest implements RootHash
 
   constructor(value: Uint8Array = new Uint8Array())
   {
-    this.value = new Digest(value);
+    this.value = new Digest(value, 16);
   }
 
   valueOf(): Digest<16>

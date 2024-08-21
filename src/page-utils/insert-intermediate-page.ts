@@ -1,46 +1,165 @@
-import { ValueDigest } from '../digest';
 import { splitOffLt } from './split-of-lt';
-import { Node } from '../node';
+import { ValueDigest } from '../digest';
 import { Page } from '../page';
+import { Node } from '../node';
 
 export function insertIntermediatePage<N extends number, K>(
-  child_page: Page<N, K>,
+  childPage: Page<N, K>,
   key: K,
   level: number,
-  value: ValueDigest<N>,
+  value: ValueDigest<N>
 ): void
 {
-  console.log(1, child_page);
-  const lt_page = splitOffLt(child_page, key, updatedPage =>
+  // Terminology:
+  //
+  //     * parent_page: top of the stack, parent of childPage
+  //     * intermediate/new page: intermediate page with level between parent_page
+  //       and childPage to be inserted between them.
+  //     * childPage: the lower page, child of parent_page
+  //
+
+  // The child page asked this page to insert a new intermediate page at this
+  // location.
+  //
+  //                        ┌──────────┐
+  //                        │ New Root │
+  //                   ┌────│    B     │─────┐         Level N
+  //                   │    └──────────┘     │
+  //              lt_pointer            high_page
+  //                   │                     │
+  //                   │                     │
+  //          ┌ ─ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
+  //             ┌─────▼────┐          ┌─────▼────┐
+  //          │  │ LT Node  │          │ GTE Node │  Child Page │
+  //             │    A     │          │    C     │     Level 0
+  //          │  └──────────┘          └──────────┘             │
+  //           ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+  //
+  // The child page must be split into nodes less-than key, and those
+  // greater-than-or-equal to key to preserve the ordering once this new page
+  // containing key is inserted. Both halves must be linked into the new page.
+  console.assert(childPage.level < level);
+  console.assert(childPage.nodes.length > 0);
+
+  // Split the child page into (less-than, greater-than) pages, split at the
+  // point where key would reside.
+  //
+  // NOTE: this may leave "page" empty if all the nodes moved to the lt page.
+  let ltPage: Page<N, K>|undefined = splitOffLt(childPage, key, updatedPage =>
   {
-    child_page = updatedPage;
-    console.log(2, key, child_page);
+    childPage = updatedPage;
   });
-  let gte_page  = null;
 
-  if (lt_page !== null)
+  // If all the nodes moved out of the childPage and into lt_page it
+  // indicates that all nodes had keys less-than the new key, meaning there
+  // may be nodes in the lt_page high page that need splitting, as it may
+  // contain values between max(lt_page.nodes) and key.
+  //
+  // For example, when inserting 4:
+  //
+  //                              ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─
+  //                                ┌───┐ New Parent │
+  //                           ┌──│ │ 4 │    Level 2
+  //                           │    └───┘            │
+  //                           │  └ ─ ─ ─ ─ ─ ─ ─ ─ ─
+  //                           │
+  //                ┌ ─ ─ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+  //                   ┌───┬───▼───────┐  Child Page │
+  //                │  │ 1 │ 2 │ high  │     Level 1
+  //                   └───┴───┴───────┘             │
+  //                └ ─ ─ ─ ─ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ ─ ─
+  //                               │
+  //                           ┌ ─ ▼ ─ ─ ─ ─ ─ ─ ─ ─ ┐
+  //                             ┌───┬───┐
+  //                           │ │ 3 │ 5 │   Level 0 │
+  //                             └───┴───┘
+  //                           └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
+  //
+  // The existing entry of 5 must be moved, as it is greater than the new
+  // parent:
+  //
+  //                              ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+  //                                            New Parent │
+  //                              │ ┌───┬───────┐  Level 2
+  //                            ┌───│ 4 │ high  │───┐      │
+  //                            │ │ └───┴───────┘   │
+  //                            │  ─ ─ ─ ─ ─ ─ ─ ─ ─│─ ─ ─ ┘
+  //                            ▼                   │
+  //           ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─    │
+  //              ┌───┬───┬───────┐  Child Page │   │
+  //           │  │ 1 │ 2 │ high  │     Level 1     │
+  //              └───┴───┴───────┘             │   │
+  //           └ ─ ─ ─ ─ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ ─ ─    │
+  //                          ▼                     ▼
+  //                  ┌ ─ ─ ─ ─ ─ ─ ─       ┌ ─ ─ ─ ─ ─ ─ ─
+  //                   ┌───┐         │       ┌───┐         │
+  //                  ││ 3 │ Level 0        ││ 5 │ Level 0
+  //                   └───┘         │       └───┘         │
+  //                  └ ─ ─ ─ ─ ─ ─ ─       └ ─ ─ ─ ─ ─ ─ ─
+  //
+  // To do this, we split the high page, attaching the lt_nodes to the lt_page
+  // created above, and attach the remaining gte_nodes to the high_page of the
+  // intermediate_page.
+  let gtePage: Page<N, K>|undefined;
+  if (ltPage)
   {
-    const high_page_lt = splitOffLt(lt_page.highPage, key, updatedPage =>
+    console.assert(level > ltPage.level);
+    console.assert(ltPage.nodes.length > 0);
+    console.assert(ltPage.maxKey() < key);
+
+    const highPageLt = splitOffLt(ltPage.highPage, key, updatedPage =>
     {
-      lt_page.highPage = updatedPage;
+      ltPage.highPage = updatedPage;
     });
-    gte_page           = lt_page.highPage;
-    lt_page.highPage   = high_page_lt;
+    gtePage          = ltPage.highPage;
+    ltPage.highPage  = highPageLt;
+
+    if (gtePage)
+    {
+      console.assert(level > gtePage.level);
+      console.assert(gtePage.nodes.length > 0);
+      console.assert(gtePage.maxKey() > key);
+    }
   }
 
-  const node              = new Node(key, value, null);
-  const intermediate_page = new Page(level, [node]);
+  // Create the new node.
+  const node = new Node(key, value);
 
-  if (gte_page !== null)
+  // Create the new intermediate page, between the parent page and the child
+  // page.
+  const intermediatePage = new Page(level, [node]);
+  if (gtePage)
   {
-    intermediate_page.insertHighPage(gte_page);
+    intermediatePage.insertHighPage(gtePage);
   }
 
-  const gte_page_ref = child_page;
-  child_page.nodes[0].setLtPointer(lt_page);
+  // Replace the page pointer at this level to point to the new page, taking
+  // the page that now contains the lt nodes after the split.
+  const oldPage = childPage;
+  childPage     = intermediatePage;
 
-  if (gte_page_ref.nodes.length > 0)
+  // At this point, we have this structure:
+  //
+  //                         ┌─────────────┐
+  //                         │  This Page  │
+  //                         └─────────────┘
+  //                                │
+  //                                ▼
+  //                      ┌───────────────────┐
+  //                      │ Intermediate Page │
+  //                      └───────────────────┘
+  //
+  // The lt_page and gtw_pages need linking into the new node within the new
+  // intermediate page.
+  childPage.nodes[0].setLtPointer(ltPage);
+
+  if (oldPage?.nodes.length > 0)
   {
-    child_page.highPage = gte_page_ref;
+    console.assert(oldPage.maxKey() > childPage.nodes[0].getKey());
+    console.assert(level > oldPage.level);
+    childPage.highPage = oldPage;
   }
 }
+
+
+

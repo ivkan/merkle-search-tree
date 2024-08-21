@@ -1,5 +1,5 @@
-import { Digest, Hasher, SipHasher, RootHash, ValueDigest, HasherInput } from './digest';
-import { InsertIntermediate, Page } from './page';
+import { Digest, Hasher, HasherInput, RootHash, SipHasher, ValueDigest } from './digest';
+import { Page, UpsertResult } from './page';
 import { Node } from './node';
 import { NodeIter } from './node-iter';
 import { PageRangeHashVisitor, Visitor } from './visitor';
@@ -7,6 +7,7 @@ import { PageRange } from './diff';
 import { insertIntermediatePage } from './page-utils';
 import { Hash } from '@noble/hashes/utils';
 import { sha256 } from '@noble/hashes/sha256';
+import { debug } from './tracing';
 
 /**
  * An implementation of the Merkle Search Tree as described in [Merkle Search
@@ -157,7 +158,7 @@ export class MerkleSearchTree<K extends HasherInput, V extends HasherInput, N ex
 
     if (process.env.NODE_ENV === 'development')
     {
-      console.debug(`regenerated root hash: ${this._rootHash}`);
+      debug(`regenerated root hash: ${this._rootHash}`);
     }
 
     return this._rootHash!;
@@ -250,7 +251,7 @@ export class MerkleSearchTree<K extends HasherInput, V extends HasherInput, N ex
     this._rootHash = null;
 
     const upsertResult = this.root.upsert(key, level, valueHash);
-    if (upsertResult instanceof InsertIntermediate && upsertResult.key === key)
+    if (upsertResult === UpsertResult.InsertIntermediate)
     {
       // As an optimisation and simplification, if the current root is
       // empty, simply replace it with the new root.

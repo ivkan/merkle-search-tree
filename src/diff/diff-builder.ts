@@ -1,5 +1,6 @@
 import { mergeOverlapping, RangeList } from './range-list';
 import { DiffRange } from './diff-range';
+import { debug } from '../tracing';
 
 /**
  * Helper to construct an ordered, minimal list of non-overlapping
@@ -28,7 +29,7 @@ export class DiffListBuilder<K extends number>
    */
   inconsistent(start: K, end: K): void
   {
-    console.debug({ start, end }, 'marking range inconsistent');
+    debug({ start, end }, 'marking range inconsistent');
     this._inconsistent.insert(start, end);
   }
 
@@ -37,7 +38,7 @@ export class DiffListBuilder<K extends number>
    */
   consistent(start: K, end: K): void
   {
-    console.debug({ start, end }, 'marking range as consistent');
+    debug({ start, end }, 'marking range as consistent');
     this._consistent.insert(start, end);
   }
 

@@ -1,4 +1,4 @@
-import { PageDigest } from '../digest/wrappers';
+import { PageDigest } from '../digest';
 import { Page } from '../page';
 
 /**
@@ -9,7 +9,7 @@ import { Page } from '../page';
  * difference calculation, used as the input to the `diff()` function.
  *
  * The contents of this type can be serialised and transmitted over the
- * network, and reconstructed by the receiver by calling `PageRange.new()`
+ * network, and reconstructed by the receiver by calling `new PageRange()`
  * with the serialised values.
  */
 export class PageRange<K>
