@@ -5,8 +5,6 @@ import { NodeIter } from './node-iter';
 import { PageRangeHashVisitor, Visitor } from './visitor';
 import { PageRange } from './diff';
 import { insertIntermediatePage } from './page-utils';
-import { Hash } from '@noble/hashes/utils';
-import { sha256 } from '@noble/hashes/sha256';
 import { debug } from './tracing';
 
 /**
@@ -92,7 +90,7 @@ export class MerkleSearchTree<K extends HasherInput, V extends HasherInput, N ex
   hasher: Hasher<N>;
 
   // Internal hasher used to produce page/root digests.
-  treeHasher: Hash<any>;
+  treeHasher: Hasher<N>;
 
   root: Page<N, K>;
   _rootHash: RootHash|null;
@@ -105,7 +103,7 @@ export class MerkleSearchTree<K extends HasherInput, V extends HasherInput, N ex
   constructor(hasher?: Hasher<N>)
   {
     this.hasher     = hasher || new SipHasher<16>();
-    this.treeHasher = sha256.create();
+    this.treeHasher = new SipHasher<16>();
     this.root       = new Page<N, K>(0, []);
     this._rootHash  = null;
   }

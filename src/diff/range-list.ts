@@ -1,9 +1,10 @@
 import { DiffRange } from './diff-range';
+import { HasherInput } from '../digest';
 
 /**
  * Helper to construct an ordered list of non-overlapping DiffRange intervals.
  */
-export class RangeList<K extends number>
+export class RangeList<K extends HasherInput>
 {
   private readonly syncRanges: DiffRange<K>[];
 

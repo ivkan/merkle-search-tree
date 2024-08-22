@@ -40,17 +40,28 @@ export interface Hasher<N extends number>
   /**
    * Hash `T`, producing a unique, deterministic digest of `N` bytes length.
    */
-  hash(value: HasherInput): Digest<N>
+  hash(value: HasherInput): Digest<N>;
+  clone?(): Hasher<N>;
+  update?(value: HasherInput): Hash<any>;
+  digest?(): Uint8Array;
 }
 
 // A fast, non-cryptographic hash outputting 128-bit digests.
 export class SipHasher<N extends number = 16> implements Hasher<N>
 {
-  private hasher: Hash<any>;
+  hasher: Hash<any>;
 
-  constructor(outputLen = 16)
+  constructor(key?: Uint8Array, outputLen = 16)
   {
-    this.hasher           = sha256.create();
+    if (key && key.length === 16)
+    {
+      this.hasher = sha256.create();
+      this.hasher.update(key);
+    }
+    else
+    {
+      this.hasher = sha256.create();
+    }
     this.hasher.outputLen = outputLen;
   }
 
@@ -61,6 +72,21 @@ export class SipHasher<N extends number = 16> implements Hasher<N>
     const result = hash.digest();
 
     return new Digest(result);
+  }
+
+  update(value: HasherInput): Hash<any>
+  {
+    return this.hasher.update(convertHashInput(value));
+  }
+
+  digest(): Uint8Array
+  {
+    return this.hasher.digest();
+  }
+
+  clone(): SipHasher<N>
+  {
+    return new SipHasher<N>(this.hasher.clone().digest());
   }
 }
 

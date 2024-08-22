@@ -1,9 +1,10 @@
 import { PageRange } from './page-range';
 import { DiffRange } from './diff-range';
 import { DiffListBuilder } from './diff-builder';
+import { HasherInput } from '../digest';
 
 
-export function diff<T extends Iterable<PageRange<K>>, U extends Iterable<PageRange<K>>, K extends number>(
+export function diff<T extends Iterable<PageRange<K>>, U extends Iterable<PageRange<K>>, K extends HasherInput>(
   local: T,
   peer: U
 ): DiffRange<K>[]
@@ -24,7 +25,7 @@ export function diff<T extends Iterable<PageRange<K>>, U extends Iterable<PageRa
   return diffBuilder.intoDiffVec();
 }
 
-function recurseSubtree<K extends number>(
+function recurseSubtree<K extends HasherInput>(
   subtreeRoot: PageRange<K>,
   peer: Peekable<PageRange<K>>,
   local: Peekable<PageRange<K>>,
@@ -45,7 +46,7 @@ function recurseSubtree<K extends number>(
   return true;
 }
 
-function recurseDiff<K extends number>(
+function recurseDiff<K extends HasherInput>(
   subtreeRoot: PageRange<K>,
   peer: Peekable<PageRange<K>>,
   local: Peekable<PageRange<K>>,

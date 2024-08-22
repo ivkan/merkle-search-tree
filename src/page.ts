@@ -1,6 +1,5 @@
-import { Hash } from '@noble/hashes/utils';
 import { Node } from './node';
-import { PageDigest, ValueDigest } from './digest';
+import { Hasher, PageDigest, ValueDigest } from './digest';
 import { Visitor } from './visitor';
 import { insertIntermediatePage, splitOffLt } from './page-utils';
 
@@ -132,7 +131,7 @@ export class Page<N extends number, K>
   minSubtreeKey(): K
   {
     const v = this.nodes[0]?.getLtPointer();
-    if (v !== undefined)
+    if (typeof v?.minSubtreeKey === 'function')
     {
       return v.minSubtreeKey();
     }
@@ -156,7 +155,7 @@ export class Page<N extends number, K>
    * Generate the page hash and cache the value, covering the nodes and the
    * sub-tree rooted at `self`.
    */
-  maybeGenerateHash(hasher: Hash<any>): void
+  maybeGenerateHash(hasher: Hasher<N>): void
   {
     if (this.treeHash !== null)
     {
@@ -181,10 +180,8 @@ export class Page<N extends number, K>
       }
 
       // Hash the node value itself
-      // console.log(n.getKey());
-      h.update(
-        typeof n.getKey()?.toString === 'function' ? n.getKey().toString() : n.getKey() as string
-      );
+      const keyForHash = typeof n.getKey()?.toString === 'function' ? n.getKey().toString() : n.getKey() as string;
+      h.update(keyForHash);
       h.update(n.getValueHash().valueOf().asBytes());
     }
 

@@ -15,6 +15,21 @@ export class PageRangeHashVisitor<N extends number, K> implements Visitor<N, K>
     this.out = [];
   }
 
+  preVisitNode(_node: Node<N, K>): boolean
+  {
+    return true;
+  }
+
+  postVisitPage(_page: Page<N, K>): boolean
+  {
+    return true;
+  }
+
+  postVisitNode(_node: Node<N, K>): boolean
+  {
+    return true;
+  }
+
   visitNode(_node: Node<N, K>): boolean
   {
     return true;

@@ -1,5 +1,6 @@
 import { PageRange } from './page-range';
 import { PageDigest } from '../digest/wrappers';
+import { HasherInput } from '../digest';
 
 /**
  * An owned point-in-time snapshot of the `PageRange` returned from a call to
@@ -30,7 +31,7 @@ import { PageDigest } from '../digest/wrappers';
  * A `PageRangeSnapshot` can also be generated from owned key values using
  * the `OwnedPageRange` type to eliminate clones where unnecessary.
  */
-export class PageRangeSnapshot<K extends number>
+export class PageRangeSnapshot<K extends HasherInput>
 {
   private ranges: OwnedPageRange<K>[];
 
@@ -50,17 +51,17 @@ export class PageRangeSnapshot<K extends number>
     }
   }
 
-  static from<K extends number>(value: PageRange<K>[]): PageRangeSnapshot<K>
+  static from<K extends HasherInput>(value: PageRange<K>[]): PageRangeSnapshot<K>
   {
     return new PageRangeSnapshot(value.map(v => OwnedPageRange.from(v)));
   }
 
-  static fromIterator<K extends number>(iter: Iterable<PageRange<K>>): PageRangeSnapshot<K>
+  static fromIterator<K extends HasherInput>(iter: Iterable<PageRange<K>>): PageRangeSnapshot<K>
   {
     return new PageRangeSnapshot(Array.from(iter).map(v => OwnedPageRange.from(v)));
   }
 
-  static fromOwnedRanges<K extends number>(value: OwnedPageRange<K>[]): PageRangeSnapshot<K>
+  static fromOwnedRanges<K extends HasherInput>(value: OwnedPageRange<K>[]): PageRangeSnapshot<K>
   {
     return new PageRangeSnapshot(value);
   }
@@ -78,13 +79,13 @@ export class PageRangeSnapshot<K extends number>
  * This type can be used to construct a `PageRangeSnapshot` from owned values
  * (eliminating key/hash clones).
  */
-export class OwnedPageRange<K extends number>
+export class OwnedPageRange<K extends HasherInput>
 {
   start: K;
   end: K;
   hash: PageDigest;
 
-  static from<K extends number>(v: PageRange<K>): OwnedPageRange<K>
+  static from<K extends HasherInput>(v: PageRange<K>): OwnedPageRange<K>
   {
     return new OwnedPageRange(
       structuredClone(v.getStart()),

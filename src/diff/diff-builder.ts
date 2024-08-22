@@ -1,6 +1,7 @@
 import { mergeOverlapping, RangeList } from './range-list';
 import { DiffRange } from './diff-range';
 import { debug } from '../tracing';
+import { HasherInput } from '../digest';
 
 /**
  * Helper to construct an ordered, minimal list of non-overlapping
@@ -13,7 +14,7 @@ import { debug } from '../tracing';
  * range is marked both inconsistent and consistent, is is treated as a
  * consistent range.
  */
-export class DiffListBuilder<K extends number>
+export class DiffListBuilder<K extends HasherInput>
 {
   private _inconsistent: RangeList<K>;
   private _consistent: RangeList<K>;

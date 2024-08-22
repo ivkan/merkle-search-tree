@@ -1,4 +1,5 @@
 import { Digest } from './digest';
+import { isUint8Array } from '../utils/is-uint8array';
 
 /**
  * The root hash of a `MerkleSearchTree`, representative of the state of the
@@ -36,9 +37,15 @@ export class PageDigest implements RootHash
 {
   readonly value: Digest<16>;
 
-  constructor(value: Uint8Array = new Uint8Array())
+  static from(value: Digest<16>): PageDigest
   {
-    this.value = new Digest(value, 16);
+    return new PageDigest(value.asBytes())
+  }
+
+  constructor(_value: Uint8Array|number[] = new Uint8Array())
+  {
+    const value = isUint8Array(_value) ? _value : new Uint8Array(_value);
+    this.value  = new Digest(value, 16);
   }
 
   valueOf(): Digest<16>
