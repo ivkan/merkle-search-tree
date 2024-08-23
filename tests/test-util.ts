@@ -1,4 +1,4 @@
-import { PageRange, MerkleSearchTree, Digest, HasherInputStringify } from '../src';
+import { PageRange, MerkleSearchTree, Digest } from '../src';
 import { createHash } from 'crypto';
 
 export class MockHasher
@@ -43,7 +43,28 @@ export class LevelKey<T>
 
 // An wrapper over integers, implementing `AsRef<[u8]>` with deterministic
 // output across platforms with differing endian-ness.
-export class IntKey extends Number implements HasherInputStringify
+declare global
+{
+  interface Number
+  {
+    new: (v: bigint|number) => Number;
+    bytes: Uint8Array;
+  }
+}
+Number.prototype.new = function (v: bigint|number)
+{
+  let bigintValue = BigInt(v);
+  this.bytes      = new Uint8Array(8);
+  for (let i = 0; i < 8; i++)
+  {
+    this.bytes[7 - i] = Number(bigintValue & 0xFFn);
+    bigintValue >>= 8n;
+  }
+  return this;
+}
+
+
+/*export class IntKey extends Number implements HasherInputStringify
 {
   readonly value: bigint;
   private readonly bytes: Uint8Array;
@@ -85,28 +106,28 @@ export class IntKey extends Number implements HasherInputStringify
   {
     return this.value.toString();
   }
-}
+}*/
 
 // A mock peer, storing `(key, value)` tuples and maintaining a
 // `MerkleSearchTree` of the store contents.
 export class Node
 {
-  private readonly store: Map<IntKey, number>;
-  private tree: MerkleSearchTree<IntKey, number>;
+  private readonly store: Map<number, number>;
+  private tree: MerkleSearchTree<number, number>;
 
   constructor()
   {
-    this.store = new Map<IntKey, number>();
-    this.tree  = new MerkleSearchTree<IntKey, number>();
+    this.store = new Map<number, number>();
+    this.tree  = new MerkleSearchTree<number, number>();
   }
 
-  upsert(key: IntKey, value: number): void
+  upsert(key: number, value: number): void
   {
     this.tree.upsert(key, value);
     this.store.set(key, value);
   }
 
-  pageRanges(): PageRange<IntKey>[]
+  pageRanges(): PageRange<number>[]
   {
     this.tree.rootHash();
     return this.tree.serialisePageRanges();
@@ -117,12 +138,12 @@ export class Node
   // }
   // Return an iterator over the specified inclusive range of keys.
   * keyRangeIter(
-    keyRange: [IntKey, IntKey],
-  ): IterableIterator<[IntKey, number]>
+    keyRange: [number, number],
+  ): IterableIterator<[number, number]>
   {
     for (const [key, value] of this.store.entries())
     {
-      if (key.value >= keyRange[0].value && key.value <= keyRange[1].value)
+      if (key >= keyRange[0] && key <= keyRange[1])
       {
         yield [key, value]
       }
@@ -134,7 +155,7 @@ export class Node
     return this.store.size;
   }
 
-  [Symbol.iterator](): IterableIterator<[IntKey, number]>
+  [Symbol.iterator](): IterableIterator<[number, number]>
   {
     return this.store[Symbol.iterator]();
   }

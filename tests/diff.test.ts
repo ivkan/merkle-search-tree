@@ -1,5 +1,5 @@
 import { diff, DiffRange, PageDigest, PageRange } from '../src';
-import { IntKey, Node } from './test-util'
+import { Node } from './test-util'
 
 function newDigest(lsb: number): PageDigest
 {
@@ -367,10 +367,10 @@ describe('PageRange tests', () =>
   it('test_trivial_sync_differing_values', () =>
   {
     const a = new Node();
-    a.upsert(new IntKey(42), 1);
+    a.upsert(42, 1);
 
     const b = new Node();
-    b.upsert(new IntKey(42), 2);
+    b.upsert(42, 2);
 
     expect(syncRound(a, b)).toBe(1);
     expect(syncRound(a, b)).toBe(0);
@@ -384,10 +384,10 @@ describe('PageRange tests', () =>
   it('test_trivial_sync_differing_keys', () =>
   {
     const a = new Node();
-    a.upsert(new IntKey(42), 1);
+    a.upsert(42, 1);
 
     const b = new Node();
-    b.upsert(new IntKey(24), 1);
+    b.upsert(24, 1);
 
     expect(syncRound(a, b)).toBe(0);
     expect(syncRound(a, b)).toBe(0);
@@ -405,11 +405,11 @@ describe('PageRange tests', () =>
   it('test_local_superset_of_peer', () =>
   {
     const a = new Node();
-    a.upsert(new IntKey(244067356035258375), 0);
+    a.upsert(244067356035258375, 0);
 
     const b = new Node();
-    b.upsert(new IntKey(0), 0);
-    b.upsert(new IntKey(2750749774246655017), 0);
+    b.upsert(0, 0);
+    b.upsert(2750749774246655017, 0);
 
     expect(syncRound(a, b)).toBe(0);
     expect(syncRound(b, a)).toBe(2);
@@ -426,12 +426,12 @@ describe('PageRange tests', () =>
   it('test_root_single_node_covered', () =>
   {
     const a = new Node();
-    a.upsert(new IntKey(2356959391436047), 0);
-    a.upsert(new IntKey(8090434540343951592), 0);
+    a.upsert(2356959391436047, 0);
+    a.upsert(8090434540343951592, 0);
 
     const b = new Node();
-    b.upsert(new IntKey(1827784367256368463), 0);
-    b.upsert(new IntKey(8090434540329235177), 0);
+    b.upsert(1827784367256368463, 0);
+    b.upsert(8090434540329235177, 0);
 
     expect(syncRound(a, b)).toBe(2);
     expect(syncRound(b, a)).toBe(4);
@@ -449,12 +449,12 @@ describe('PageRange tests', () =>
   it('test_superset', () =>
   {
     const a = new Node();
-    a.upsert(new IntKey(1479827427186972579), 0);
-    a.upsert(new IntKey(6895546778622627890), 0);
+    a.upsert(1479827427186972579, 0);
+    a.upsert(6895546778622627890, 0);
 
     const b = new Node();
-    b.upsert(new IntKey(0), 0);
-    b.upsert(new IntKey(8090434540329235177), 0);
+    b.upsert(0, 0);
+    b.upsert(8090434540329235177, 0);
 
     expect(syncRound(a, b)).toBe(0);
     expect(syncRound(b, a)).toBe(2);
@@ -471,14 +471,14 @@ describe('PageRange tests', () =>
   it('test_both_roots_single_differing_node', () =>
   {
     const a = new Node();
-    a.upsert(new IntKey(3541571342636567061), 0);
-    a.upsert(new IntKey(4706901308862946071), 0);
-    a.upsert(new IntKey(4706903583207578752), 0);
+    a.upsert(3541571342636567061, 0);
+    a.upsert(4706901308862946071, 0);
+    a.upsert(4706903583207578752, 0);
 
     const b = new Node();
-    b.upsert(new IntKey(3632796868130453657), 0);
-    b.upsert(new IntKey(3632803506728089373), 0);
-    b.upsert(new IntKey(4707132771120484774), 0);
+    b.upsert(3632796868130453657, 0);
+    b.upsert(3632803506728089373, 0);
+    b.upsert(4707132771120484774, 0);
 
     for (let i = 0; i < 100; i++)
     {
@@ -501,13 +501,13 @@ describe('PageRange tests', () =>
     const a = new Node();
     for (let i = 1; i <= 10; i++)
     {
-      a.upsert(new IntKey(i), 0);
+      a.upsert(i, 0);
     }
 
     const b = new Node();
     for (let i = 1; i <= 6; i++)
     {
-      b.upsert(new IntKey(i), 0);
+      b.upsert(i, 0);
     }
 
     expect(syncRound(a, b)).toBe(10);
@@ -562,7 +562,7 @@ describe('PageRange tests', () =>
 
     kvPairs.forEach(([k, v]) =>
     {
-      node.upsert(new IntKey(k), v);
+      node.upsert(k, v);
     });
 
     return node;
@@ -627,14 +627,14 @@ describe('PageRange tests', () =>
     const aTree = a.pageRanges();
     const want  = diff(b.pageRanges(), aTree);
 
-    console.log('want', want);
+    // console.log('want', want);
 
     let count = 0;
     for (const range of want)
     {
-      for (const [k, v] of a.keyRangeIter([range.start as IntKey, range.end as IntKey]))
+      for (const [k, v] of a.keyRangeIter([range.start as number, range.end as number]))
       {
-        b.upsert(k.clone(), v);
+        b.upsert(k, v);
         count++;
       }
     }
