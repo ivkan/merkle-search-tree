@@ -263,5 +263,15 @@ export class MerkleSearchTree<K extends HasherInput, V extends HasherInput, N ex
       insertIntermediatePage(this.root, key, level, valueHash);
     }
   }
+
+  /*clone(): MerkleSearchTree<K, V>
+  {
+    const tree      = new MerkleSearchTree<K, V>(this.hasher.clone());
+    tree.treeHasher = this.treeHasher.clone();
+    tree.root       = this.root;
+    tree._rootHash  = this._rootHash;
+
+    return tree;
+  }*/
 }
 

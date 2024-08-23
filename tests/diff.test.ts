@@ -1,4 +1,5 @@
 import { diff, DiffRange, PageDigest, PageRange } from '../src';
+import { IntKey, Node } from './test-util'
 
 function newDigest(lsb: number): PageDigest
 {
@@ -31,7 +32,7 @@ describe('PageRange tests', () =>
   test_page_is_superset_of('end', 1, 8, 2, 9, false);
   test_page_is_superset_of('outside', 1, 10, 0, 11, false);
 
-  it('test_no_diff', () =>
+  it('test no diff', () =>
   {
     const local = [
       new PageRange(2, 15, newDigest(1)),
@@ -50,7 +51,7 @@ describe('PageRange tests', () =>
     expect(diffResult.length === 0).toBeTruthy();
   });
 
-  it('test_diff_peer_missing_last_page', () =>
+  it('test diff peer missing last page', () =>
   {
     const local = [
       new PageRange(2, 15, newDigest(1)),
@@ -73,7 +74,7 @@ describe('PageRange tests', () =>
     expect(diff(local, peer).length === 0);
   });
 
-  it('test_diff_local_missing_last_page', () =>
+  it('test diff local missing last page', () =>
   {
     let local = [
       new PageRange(2, 15, newDigest(1)),
@@ -97,7 +98,7 @@ describe('PageRange tests', () =>
     expect(result1).toEqual(result2);
   });
 
-  it('test_diff_peer_missing_leaf_page', () =>
+  it('test diff peer missing leaf page', () =>
   {
     const local = [
       new PageRange(2, 15, newDigest(1)),
@@ -117,7 +118,7 @@ describe('PageRange tests', () =>
     expect(diff(local, peer).length === 0).toBeTruthy();
   });
 
-  it('test_diff_local_missing_leaf_page', () =>
+  it('test diff local missing leaf page', () =>
   {
     const local = [
       new PageRange(3, 15, newDigest(42)),
@@ -140,7 +141,7 @@ describe('PageRange tests', () =>
     expect(result1).toEqual(result2);
   });
 
-  it('test_diff_local_missing_subtree', () =>
+  it('test diff local missing subtree', () =>
   {
     const local = [
       new PageRange(3, 15, newDigest(42)),
@@ -160,7 +161,7 @@ describe('PageRange tests', () =>
     expect(result1).toEqual(result2);
   });
 
-  it('test_diff_peer_missing_subtree', () =>
+  it('test diff peer missing subtree', () =>
   {
     const local = [
       new PageRange(2, 15, newDigest(1)),
@@ -178,7 +179,7 @@ describe('PageRange tests', () =>
     expect(diff(local, peer).length === 0).toBeTruthy();
   });
 
-  it('test_diff_leaf_page_hash', () =>
+  it('test diff leaf page hash', () =>
   {
     const peer = [
       new PageRange(2, 15, newDigest(42)),
@@ -201,7 +202,7 @@ describe('PageRange tests', () =>
     expect(result1).toEqual(result2);
   });
 
-  it('test_diff_peer_extra_key_last_page', () =>
+  it('test diff peer extra key last page', () =>
   {
     const local = [
       new PageRange(2, 15, newDigest(1)),
@@ -218,12 +219,10 @@ describe('PageRange tests', () =>
     // Root hash differs to reflect differing child
     peer[0] = new PageRange(peer[0].getStart(), 16, newDigest(42));
 
-    const result1 = diff(local, peer);
-    const result2 = [new DiffRange(6, 16)];
-    expect(result1).toEqual(result2);
+    expect(diff(local, peer)).toEqual([new DiffRange(6, 16)]);
   });
 
-  it('test_diff_root_page_hash', () =>
+  it('test diff root page hash', () =>
   {
     const local = [
       new PageRange(2, 15, newDigest(1)),
@@ -311,6 +310,337 @@ describe('PageRange tests', () =>
     // pages that shrink the range.
     expect(diff(localCopy, peer)).toEqual([new DiffRange(2, 15)]);
   });
+
+
+
+
+
+  it('test_child_page_inconsistent_no_subtree_recurse', () =>
+  {
+    const local = [
+      new PageRange(0, 17995215864353464453, newDigest(1)),
+      new PageRange(0, 1331283967702353742, newDigest(2)),
+      new PageRange(2425302987964992968, 3632803506728089373, newDigest(3)), // Larger key range than peer
+      new PageRange(4706903583207578752, 4707132771120484774, newDigest(4)), // Shorter key range than peer (missing first key)
+      new PageRange(17995215864353464453, 17995215864353464453, newDigest(5)),
+    ];
+    const peer  = [
+      new PageRange(0, 17995215864353464453, newDigest(11)), // Differs
+      new PageRange(0, 1331283967702353742, newDigest(2)),
+      new PageRange(2425302987964992968, 3541571342636567061, newDigest(13)), // Differs
+      new PageRange(3632803506728089373, 4707132771120484774, newDigest(14)), // Differs
+      new PageRange(17995215864353464453, 17995215864353464453, newDigest(5)),
+    ];
+
+    expect(diff(local, peer)).toEqual([{
+      start: 1331283967702353742,
+      end: 17995215864353464453
+    }]);
+  });
+
+  // If the bounds of the peer page exceed that of the local page on both
+  // sides, make sure both sides are requested to minimise round trips.
+  it('test_diff_peer_bounds_larger_both_sides', () =>
+  {
+    const local = [new PageRange(2, 15, newDigest(1))];
+    const peer  = [new PageRange(1, 42, newDigest(2))];
+
+    expect(diff(local, peer)).toEqual([{ start: 1, end: 42 }]);
+  });
+
+  it('test_diff_empty_peer', () =>
+  {
+    const peer: any[] = [];
+    const local       = [new PageRange(1, 42, newDigest(1))];
+
+    expect(diff(local, peer).length === 0).toBeTruthy();
+  });
+
+  it('test_diff_empty_local', () =>
+  {
+    const local: any[] = [];
+    const peer         = [new PageRange(1, 42, newDigest(1))];
+
+    expect(diff(local, peer)).toEqual([{ start: 1, end: 42 }]);
+  });
+
+  it('test_trivial_sync_differing_values', () =>
+  {
+    const a = new Node();
+    a.upsert(new IntKey(42), 1);
+
+    const b = new Node();
+    b.upsert(new IntKey(42), 2);
+
+    expect(syncRound(a, b)).toBe(1);
+    expect(syncRound(a, b)).toBe(0);
+
+    expect(syncRound(a, b)).toBe(0);
+    expect(syncRound(a, b)).toBe(0);
+
+    expect(a).toEqual(b);
+  });
+
+  it('test_trivial_sync_differing_keys', () =>
+  {
+    const a = new Node();
+    a.upsert(new IntKey(42), 1);
+
+    const b = new Node();
+    b.upsert(new IntKey(24), 1);
+
+    expect(syncRound(a, b)).toBe(0);
+    expect(syncRound(a, b)).toBe(0);
+    expect(syncRound(b, a)).toBe(1);
+    expect(syncRound(b, a)).toBe(0);
+    expect(syncRound(a, b)).toBe(2);
+    expect(syncRound(a, b)).toBe(0);
+    expect(syncRound(b, a)).toBe(0);
+    expect(syncRound(b, a)).toBe(0);
+
+    expect(a).toEqual(b);
+  });
+
+  // Test the case where the local root page is a superset of the peer.
+  it('test_local_superset_of_peer', () =>
+  {
+    const a = new Node();
+    a.upsert(new IntKey(244067356035258375), 0);
+
+    const b = new Node();
+    b.upsert(new IntKey(0), 0);
+    b.upsert(new IntKey(2750749774246655017), 0);
+
+    expect(syncRound(a, b)).toBe(0);
+    expect(syncRound(b, a)).toBe(2);
+    expect(syncRound(a, b)).toBe(3);
+    expect(syncRound(b, a)).toBe(0);
+    expect(syncRound(a, b)).toBe(0);
+    expect(syncRound(b, a)).toBe(0);
+
+    expect(a).toEqual(b);
+  });
+
+  // Construct a test with a level 2 root node that is absent in the local
+  // tree, but whose presence does not affect the min/max ranges of the root
+  it('test_root_single_node_covered', () =>
+  {
+    const a = new Node();
+    a.upsert(new IntKey(2356959391436047), 0);
+    a.upsert(new IntKey(8090434540343951592), 0);
+
+    const b = new Node();
+    b.upsert(new IntKey(1827784367256368463), 0);
+    b.upsert(new IntKey(8090434540329235177), 0);
+
+    expect(syncRound(a, b)).toBe(2);
+    expect(syncRound(b, a)).toBe(4);
+
+    expect(syncRound(a, b)).toBe(0);
+    expect(syncRound(b, a)).toBe(0);
+
+    expect(syncRound(a, b)).toBe(0);
+    expect(syncRound(b, a)).toBe(0);
+
+    expect(a).toEqual(b);
+  });
+
+  // One node has a tree range that is a superset of the other.
+  it('test_superset', () =>
+  {
+    const a = new Node();
+    a.upsert(new IntKey(1479827427186972579), 0);
+    a.upsert(new IntKey(6895546778622627890), 0);
+
+    const b = new Node();
+    b.upsert(new IntKey(0), 0);
+    b.upsert(new IntKey(8090434540329235177), 0);
+
+    expect(syncRound(a, b)).toBe(0);
+    expect(syncRound(b, a)).toBe(2);
+    expect(syncRound(a, b)).toBe(4);
+    expect(syncRound(b, a)).toBe(0);
+    expect(syncRound(a, b)).toBe(0);
+    expect(syncRound(b, a)).toBe(0);
+
+    expect(a).toEqual(b);
+  });
+
+  // Construct a test where both roots contain a single key, both with
+  // differing values - each node needs to pull their peer's root key.
+  it('test_both_roots_single_differing_node', () =>
+  {
+    const a = new Node();
+    a.upsert(new IntKey(3541571342636567061), 0);
+    a.upsert(new IntKey(4706901308862946071), 0);
+    a.upsert(new IntKey(4706903583207578752), 0);
+
+    const b = new Node();
+    b.upsert(new IntKey(3632796868130453657), 0);
+    b.upsert(new IntKey(3632803506728089373), 0);
+    b.upsert(new IntKey(4707132771120484774), 0);
+
+    for (let i = 0; i < 100; i++)
+    {
+      syncRound(a, b);
+      syncRound(b, a);
+    }
+
+    expect(syncRound(a, b)).toBe(0);
+    expect(syncRound(b, a)).toBe(0);
+
+    expect(a).toEqual(b);
+  });
+
+  // OLD: Previously ensured only the "leading edge" missing keys are fetched
+  // - the common case for new monotonic keys added to a tree.
+  //
+  // Disabled to reduce average sync cost.
+  it('test_leading_edge_range_sync', () =>
+  {
+    const a = new Node();
+    for (let i = 1; i <= 10; i++)
+    {
+      a.upsert(new IntKey(i), 0);
+    }
+
+    const b = new Node();
+    for (let i = 1; i <= 6; i++)
+    {
+      b.upsert(new IntKey(i), 0);
+    }
+
+    expect(syncRound(a, b)).toBe(10);
+    expect(syncRound(b, a)).toBe(0);
+
+    expect(syncRound(a, b)).toBe(0);
+    expect(syncRound(b, a)).toBe(0);
+
+    expect(a).toEqual(b);
+  });
+
+  const MAX_NODE_KEYS: number = 100;
+
+  // Helper function to generate random integer within a range
+  function getRandomInt(min: number, max: number): number
+  {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  // Helper function to generate a set of random key-value pairs
+  function generateRandomKeyValuePairs(min: number, max: number, count: number): Set<[number, number]>
+  {
+    const set = new Set<[number, number]>();
+    while (set.size < count)
+    {
+      const key   = getRandomInt(min, max);
+      const value = getRandomInt(min, max);
+      set.add([key, value]);
+    }
+    return set;
+  }
+
+  // Yield a set of keys covering the full number range
+  function arbitraryLargeKeySet(): Set<[number, number]>
+  {
+    const count = getRandomInt(0, MAX_NODE_KEYS);
+    return generateRandomKeyValuePairs(0, Number.MAX_SAFE_INTEGER, count);
+  }
+
+  // Yield a small set of keys
+  function arbitrarySmallKeySet(): Set<[number, number]>
+  {
+    const count = getRandomInt(0, MAX_NODE_KEYS);
+    return generateRandomKeyValuePairs(0, 50, count);
+  }
+
+  // Yield an arbitrary Node containing up to 100 random key/value pairs
+  function arbitraryNode(): Node
+  {
+    const node    = new Node();
+    const kvPairs = Math.random() < 0.5 ? arbitraryLargeKeySet() : arbitrarySmallKeySet();
+
+    kvPairs.forEach(([k, v]) =>
+    {
+      node.upsert(new IntKey(k), v);
+    });
+
+    return node;
+  }
+
+
+  // Perform a synchronisation test that asserts two arbitrary trees
+  // (potentially containing no overlapping key/values) converge to the
+  // same state after repeated synchronisation rounds.
+  it('prop_sync_trees', () =>
+  {
+    // Bound the number of sync rounds needed to converge to at most 1
+    // key being sync'd per round.
+    const a        = arbitraryNode();
+    const b        = arbitraryNode();
+    const maxCount = a.keyCount() + b.keyCount() + 1;
+    let count      = 0;
+
+    while (true)
+    {
+      const aToB = syncRound(a, b);
+      const bToA = syncRound(b, a);
+      if (aToB === 0 && bToA === 0)
+      {
+        break;
+      }
+
+      // Syncing should never pull more than the full peer tree.
+      expect(aToB).toBeLessThanOrEqual(a.keyCount());
+      expect(bToA).toBeLessThanOrEqual(b.keyCount());
+
+      count++;
+      if (count >= maxCount)
+      {
+        throw new Error('failed to sync a => b in round limit');
+      }
+    }
+
+    // Ensure the nodes are now consistent.
+    expect(a).toEqual(b);
+  });
+
+  // Invariant: page ranges yielded from an OwnedPageRange are
+  // identical to those from the borrowed PageRange equivalent.
+  // it('prop_owned_page_range_equivalent', () =>
+  // {
+  //   const a      = arbitraryNode();
+  //   const aRef   = a.pageRanges();
+  //   const aOwned = PageRangeSnapshot.from(aRef);
+  //
+  //   const aOwnedIter = aOwned.iter();
+  //   const aRefIter   = aRef.iter();
+  //
+  //   expect(aOwnedIter).toEqual(aRefIter);
+  // });
+
+  // Perform a single sync round, pulling differences from a into b.
+  //
+  // Returns the number of fetched pages.
+  function syncRound(a: Node, b: Node): number
+  {
+    const aTree = a.pageRanges();
+    const want  = diff(b.pageRanges(), aTree);
+
+    console.log('want', want);
+
+    let count = 0;
+    for (const range of want)
+    {
+      for (const [k, v] of a.keyRangeIter([range.start as IntKey, range.end as IntKey]))
+      {
+        b.upsert(k.clone(), v);
+        count++;
+      }
+    }
+
+    return count;
+  }
 });
 
 

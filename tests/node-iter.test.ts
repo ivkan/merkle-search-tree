@@ -26,7 +26,7 @@ const MOCK_VALUE: ValueDigest<32> = new ValueDigest(new Digest(new Uint8Array(32
 
 describe('Order Test', () =>
 {
-  test('test_order', () =>
+  test('test order', () =>
   {
     const lt0 = new Page(0, [new Node(new IntKey(2), MOCK_VALUE, null)]);
     const gt0 = new Page(0, [new Node(new IntKey(5), MOCK_VALUE, null)]);

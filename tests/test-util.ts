@@ -1,4 +1,4 @@
-import { PageRange, MerkleSearchTree, Digest } from '../src';
+import { PageRange, MerkleSearchTree, Digest, HasherInputStringify } from '../src';
 import { createHash } from 'crypto';
 
 export class MockHasher
@@ -43,7 +43,7 @@ export class LevelKey<T>
 
 // An wrapper over integers, implementing `AsRef<[u8]>` with deterministic
 // output across platforms with differing endian-ness.
-export class IntKey extends Number
+export class IntKey extends Number implements HasherInputStringify
 {
   readonly value: bigint;
   private readonly bytes: Uint8Array;
@@ -59,6 +59,11 @@ export class IntKey extends Number
       this.bytes[7 - i] = Number(bigintValue & 0xFFn);
       bigintValue >>= 8n;
     }
+  }
+
+  clone(): IntKey
+  {
+    return new IntKey(this.value);
   }
 
   unwrap(): bigint
@@ -86,16 +91,16 @@ export class IntKey extends Number
 // `MerkleSearchTree` of the store contents.
 export class Node
 {
-  private readonly store: Map<IntKey, bigint>;
-  private tree: MerkleSearchTree<IntKey, bigint>;
+  private readonly store: Map<IntKey, number>;
+  private tree: MerkleSearchTree<IntKey, number>;
 
   constructor()
   {
-    this.store = new Map<IntKey, bigint>();
-    this.tree  = new MerkleSearchTree<IntKey, bigint>();
+    this.store = new Map<IntKey, number>();
+    this.tree  = new MerkleSearchTree<IntKey, number>();
   }
 
-  upsert(key: IntKey, value: bigint): void
+  upsert(key: IntKey, value: number): void
   {
     this.tree.upsert(key, value);
     this.store.set(key, value);
@@ -113,11 +118,11 @@ export class Node
   // Return an iterator over the specified inclusive range of keys.
   * keyRangeIter(
     keyRange: [IntKey, IntKey],
-  ): IterableIterator<[IntKey, bigint]>
+  ): IterableIterator<[IntKey, number]>
   {
     for (const [key, value] of this.store.entries())
     {
-      if (key >= keyRange[0] && key <= keyRange[1])
+      if (key.value >= keyRange[0].value && key.value <= keyRange[1].value)
       {
         yield [key, value]
       }
@@ -129,7 +134,7 @@ export class Node
     return this.store.size;
   }
 
-  [Symbol.iterator](): IterableIterator<[IntKey, bigint]>
+  [Symbol.iterator](): IterableIterator<[IntKey, number]>
   {
     return this.store[Symbol.iterator]();
   }
