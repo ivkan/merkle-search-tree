@@ -1,12 +1,8 @@
-import { PageRange } from '../src/diff/page-range'
-import { PageRangeSnapshot } from '../src/diff/page-range-snapshot'
-import { PageDigest } from '../src/digest/wrappers'
-import { diff } from '../src/diff'
-import { MerkleSearchTree } from '../src/tree'
+import { diff, OwnedPageRange, MerkleSearchTree, PageRangeSnapshot, PageRange, PageDigest } from '../src'
 
-describe('PageRangeSnapshot', () =>
+describe('PageRangeSnapshot Tests', () =>
 {
-  test('owned usage', () =>
+  test('test_owned_usage', () =>
   {
     let a = new MerkleSearchTree();
     let b = new MerkleSearchTree();
@@ -19,8 +15,8 @@ describe('PageRangeSnapshot', () =>
     b.rootHash();
 
     // Generate owned snapshots from the borrowed page ranges
-    let snapA = PageRangeSnapshot.from(a.serialisePageRanges());
-    let snapB = PageRangeSnapshot.from(b.serialisePageRanges());
+    const snapA = PageRangeSnapshot.from(a.serialisePageRanges());
+    const snapB = PageRangeSnapshot.from(b.serialisePageRanges());
 
     // Tree should be mutable whilst snapshots are in scope
     a.upsert('bananas', 13);
@@ -28,13 +24,13 @@ describe('PageRangeSnapshot', () =>
 
     // Which should be usable for diff generation (and not reflect the
     // updated state since the trees were mutated).
-    let diffResult = diff(snapA.iter(), snapB.iter());
+    const diffResult = diff(snapA.iter(), snapB.iter());
     expect(diffResult).toHaveLength(1);
     expect(diffResult[0].start).toBe('bananas');
     expect(diffResult[0].end).toBe('bananas');
   });
 
-  test('collect equivalence refs', () =>
+  test('test_collect_equivalence_refs', () =>
   {
     const a1 = [
       new PageRange(
@@ -49,11 +45,65 @@ describe('PageRangeSnapshot', () =>
       ),
     ];
 
-    const a2         = PageRangeSnapshot.from(a1);
+    const a2         = PageRangeSnapshot.from(a1.slice());
     const a1Snapshot = PageRangeSnapshot.from(a1);
 
     expect(a1Snapshot).toEqual(a2);
   });
 
-  // Add more tests as needed
+  test('test_collect_equivalence_owned', () =>
+  {
+    const a1 = [
+      new OwnedPageRange(
+        'a',
+        'b',
+        new PageDigest([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+      ),
+      new OwnedPageRange(
+        'c',
+        'd',
+        new PageDigest([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
+      ),
+    ];
+
+    const a2         = PageRangeSnapshot.fromOwnedRanges(a1.slice());
+    const a1Snapshot = PageRangeSnapshot.fromOwnedRanges(a1);
+
+    expect(a1Snapshot).toEqual(a2);
+  });
+
+  test('test_owned_ref_page_equivalence', () =>
+  {
+    const refPages = [
+      new PageRange<string>(
+        'a',
+        'b',
+        new PageDigest([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+      ),
+      new PageRange<string>(
+        'c',
+        'd',
+        new PageDigest([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
+      ),
+    ];
+
+    const ownedPages = [
+      new OwnedPageRange<string>(
+        'a',
+        'b',
+        new PageDigest([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+      ),
+      new OwnedPageRange<string>(
+        'c',
+        'd',
+        new PageDigest([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
+      ),
+    ];
+
+    const refPagesSnapshot   = PageRangeSnapshot.from(refPages);
+    const ownedPagesSnapshot = PageRangeSnapshot.fromOwnedRanges(ownedPages);
+
+    expect(refPagesSnapshot).toEqual(ownedPagesSnapshot);
+  });
 });
+

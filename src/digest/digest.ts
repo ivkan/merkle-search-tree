@@ -1,4 +1,5 @@
-import { base64 } from "@scure/base"
+import { base64 } from '@scure/base'
+import { persistUint8Array } from '../utils/uint8array';
 
 /**
  * A variable bit length digest, output from a `Hasher` implementation.
@@ -33,9 +34,10 @@ export class Digest<N extends number>
     return out;
   }
 
-  constructor(digest: Uint8Array, length?: N)
+  constructor(_digest: Uint8Array|number[], length?: N)
   {
-    length = (typeof length === 'number' ? length : digest.length) as N;
+    const digest = persistUint8Array(_digest);
+    length       = (typeof length === 'number' ? length : digest.length) as N;
     if (digest.length !== length)
     {
       throw new Error(`Digest must be ${length} bytes long`);

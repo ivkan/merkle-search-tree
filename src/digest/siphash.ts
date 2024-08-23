@@ -1,7 +1,7 @@
 import { Hash } from '@noble/hashes/utils'
 import { sha256 } from '@noble/hashes/sha256'
 import { Digest } from './digest';
-import { isUint8Array } from '../utils/is-uint8array';
+import { isUint8Array } from '../utils/uint8array';
 
 export interface HasherInputStringify
 {

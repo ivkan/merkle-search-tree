@@ -14,9 +14,9 @@ import { Page } from '../page';
  */
 export class PageRange<K>
 {
-  private readonly start: K;
-  private readonly end: K;
-  private readonly hash: PageDigest;
+  readonly start: K;
+  readonly end: K;
+  readonly hash: PageDigest;
 
   /**
    * Create a `PageRange` from a `Page`.

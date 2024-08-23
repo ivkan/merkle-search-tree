@@ -238,13 +238,21 @@ describe('PageRange tests', () =>
     // Root hash differs due to added key 8
     peer[0] = new PageRange(peer[0].getStart(), peer[0].getEnd(), newDigest(42));
 
-    const result1 = diff(local, peer);
-    const result2 = [new DiffRange(6, 15)];
-    expect(result1).toEqual(result2);
+    // Without the reduce_sync_range optimisation, this root inconsistency
+    // would cause a fetch against the whole tree (start: 2, end: 15).
+    //
+    // Instead, the known-good sub-tree pages can be removed from the sync
+    // range.
+    expect(diff(local, peer)).toEqual([new DiffRange(6, 15)]);
   });
 
-  it('test_diff_peer_intermediate_bounds', () =>
+  it('test diff peer intermediate bounds', () =>
   {
+    // This breaks the convention of the same tree being used, and instead
+    // pushes 7 down into level 1.
+    //
+    // It appears in the peer only.
+
     const local = [
       new PageRange(2, 15, newDigest(1)),
       new PageRange(2, 6, newDigest(2)),
@@ -260,13 +268,17 @@ describe('PageRange tests', () =>
 
     peer[0] = new PageRange(peer[0].getStart(), peer[0].getEnd(), newDigest(42));
 
-    const result1 = diff(local, peer);
-    const result2 = [new DiffRange(5, 15)];
-    expect(result1).toEqual(result2);
+    expect(diff(local, peer)).toEqual([new DiffRange(2, 15)]);
   });
 
-  it('test_diff_peer_intermediate_bounds_and_inconsistent_subtree_leaf', () =>
+  it('test diff peer intermediate bounds and inconsistent subtree leaf', () =>
   {
+    // This breaks the convention of the same tree being used, and instead
+    // pushes 7 down into level 1.
+    //
+    // It appears in the peer only, and additionally the value of 2 is
+    // modified.
+
     const local = [
       new PageRange(2, 15, newDigest(1)),
       new PageRange(2, 6, newDigest(2)),
@@ -286,9 +298,7 @@ describe('PageRange tests', () =>
     // Root hash
     peer[0] = new PageRange(peer[0].getStart(), peer[0].getEnd(), newDigest(42));
 
-    const result1 = diff(local, peer);
-    const result2 = [new DiffRange(5, 15)];
-    expect(result1).toEqual(result2);
+    expect(diff(local, peer)).toEqual([new DiffRange(2, 15)]);
 
     let localCopy = [...peer];
 
@@ -297,9 +307,9 @@ describe('PageRange tests', () =>
     peer[1]      = new PageRange(peer[1].getStart(), peer[1].getEnd(), newDigest(2));
     peer[0]      = new PageRange(peer[0].getStart(), peer[0].getEnd(), newDigest(1));
 
-    const resultCopy1 = diff(localCopy, peer);
-    const resultCopy2 = [new DiffRange(5, 15)];
-    expect(resultCopy1).toEqual(resultCopy2);
+    // 2, 15 because the root page is inconsistent and there's no consistent
+    // pages that shrink the range.
+    expect(diff(localCopy, peer)).toEqual([new DiffRange(2, 15)]);
   });
 });
 

@@ -1,5 +1,35 @@
 import { Digest } from './digest';
-import { isUint8Array } from '../utils/is-uint8array';
+import { equalBytes } from '../utils/uint8array';
+
+export class BaseHash<N extends number>
+{
+  readonly value: Digest<N>;
+
+  constructor(value: Digest<N>)
+  {
+    this.value = value;
+  }
+
+  valueOf(): Digest<N>
+  {
+    return this.value;
+  }
+
+  toString(): string
+  {
+    return this.value.toString();
+  }
+
+  asBytes(): Uint8Array
+  {
+    return this.value.asBytes();
+  }
+
+  equals(other: BaseHash<N>): boolean
+  {
+    return equalBytes(this.value.asBytes(), other.value.asBytes())
+  }
+}
 
 /**
  * The root hash of a `MerkleSearchTree`, representative of the state of the
@@ -9,23 +39,11 @@ import { isUint8Array } from '../utils/is-uint8array';
  * state if both `RootHash` read from the trees are identical (assuming
  * identical, deterministic `Hasher` implementations).
  */
-export class RootHash
+export class RootHash extends BaseHash<16>
 {
-  readonly value: Digest<16>;
-
   constructor(value: PageDigest)
   {
-    this.value = value.value;
-  }
-
-  valueOf(): Digest<16>
-  {
-    return this.value;
-  }
-
-  toString(): string
-  {
-    return this.value.toString();
+    super(value.value);
   }
 }
 
@@ -33,29 +51,16 @@ export class RootHash
  * Type wrapper over a `Digest` of a `Page`, representing the hash of the
  * nodes & subtree rooted at the `Page`.
  */
-export class PageDigest implements RootHash
+export class PageDigest extends BaseHash<16>
 {
-  readonly value: Digest<16>;
-
   static from(value: Digest<16>): PageDigest
   {
     return new PageDigest(value.asBytes())
   }
 
-  constructor(_value: Uint8Array|number[] = new Uint8Array())
+  constructor(value: Uint8Array|number[] = new Uint8Array())
   {
-    const value = isUint8Array(_value) ? _value : new Uint8Array(_value);
-    this.value  = new Digest(value, 16);
-  }
-
-  valueOf(): Digest<16>
-  {
-    return this.value;
-  }
-
-  toString(): string
-  {
-    return this.value.toString();
+    super(new Digest(value, 16));
   }
 
   clone(): PageDigest
@@ -68,28 +73,16 @@ export class PageDigest implements RootHash
  * Type wrapper over a `Digest` of a tree value, for readability / clarity /
  * compile-time safety.
  */
-export class ValueDigest<N extends number>
+export class ValueDigest<N extends number> extends BaseHash<N>
 {
-  private readonly value: Digest<N>;
-
   constructor(value: Digest<N>)
   {
-    this.value = value;
+    super(value);
   }
 
   clone(): ValueDigest<N>
   {
     return new ValueDigest(this.value.clone());
-  }
-
-  valueOf(): Digest<N>
-  {
-    return this.value;
-  }
-
-  toString(): string
-  {
-    return this.value.toString();
   }
 }
 

@@ -10,9 +10,9 @@ import { Visitor } from './visitor';
  */
 export class Node<N extends number, K>
 {
-  private readonly key: K;
-  private valueHash: ValueDigest<N>;
-  private ltPointer: Page<N, K>|null;
+  readonly key: K;
+  valueHash: ValueDigest<N>;
+  ltPointer: Page<N, K>|null;
 
   constructor(key: K, value: ValueDigest<N>, ltPointer: Page<N, K>|null = null)
   {
@@ -71,11 +71,6 @@ export class Node<N extends number, K>
   }
 
   getLtPointer(): Page<N, K>|null
-  {
-    return this.ltPointer;
-  }
-
-  getLtPointerMut(): Page<N, K>|null
   {
     return this.ltPointer;
   }

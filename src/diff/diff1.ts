@@ -78,7 +78,7 @@ function recurseDiff<K extends HasherInput>(
     {
     }
 
-    if (l.getHash() === p.getHash())
+    if (l.getHash().equals(p.getHash()))
     {
       diffBuilder.consistent(p.getStart(), p.getEnd());
       skipSubtree(p, peer);
