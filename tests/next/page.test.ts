@@ -1,30 +1,30 @@
-import { Digest, PageDigest, ValueDigest } from '../src';
-import { Page, Node, splitOffLt } from '../src';
-import { assertTree } from '../src/assert-tree';
+import { Digest, Page, Node, PageDigest, splitOffLt, ValueDigest, assertTree } from '../../src/next';
 
-const MOCK_VALUE: ValueDigest<1>    = new ValueDigest(new Digest(new Uint8Array(1).fill(0)));
-const MOCK_PAGE_HASH: PageDigest = new PageDigest(new Uint8Array(16).fill(0));
+const MOCK_VALUE: ValueDigest<1> = ValueDigest.new(Digest.new(new Uint8Array(1).fill(0)));
+const MOCK_PAGE_HASH: PageDigest = PageDigest.new(new Uint8Array(16).fill(0));
+const CB                         = (_: any) =>
+{
+};
 
 describe('Page Split Tests', () =>
 {
   test('test_split_page_empty', () =>
   {
-    let gtePage: Page<1, any>|null = new Page(42, []);
-    const cb = (_: any) => {};
-    expect(() => splitOffLt(gtePage, 5, cb)).toThrowError('No nodes in this page.');
+    let gtePage: Page<1, number>|null = new Page(42, []);
+    expect(() => splitOffLt(gtePage, 5, CB)).toThrowError('Page nodes should not be empty');
   });
 
   test('test_split_page_single_node_lt', () =>
   {
     let gtePage: Page<1, number> = new Page(42, [new Node(2, MOCK_VALUE, null)]);
-    gtePage.treeHash       = MOCK_PAGE_HASH;
+    gtePage.treeHash             = MOCK_PAGE_HASH;
 
-    const ltPage = splitOffLt(gtePage, 5, updatedPaged =>
+    const ltPage = splitOffLt(gtePage, 5, updatedPage =>
     {
-      gtePage = updatedPaged;
+      gtePage = updatedPage;
     });
-    expect(gtePage).toBeNull();
 
+    expect(gtePage).toBeNull();
     expect(ltPage.level).toBe(42);
     expect(ltPage.treeHash).toBe(MOCK_PAGE_HASH);
     expect(ltPage.nodes).toEqual([new Node(2, MOCK_VALUE, null)]);
@@ -33,18 +33,18 @@ describe('Page Split Tests', () =>
   test('test_split_page_single_node_gt', () =>
   {
     let gtePage: Page<1, number> = new Page(42, [new Node(2, MOCK_VALUE, null)]);
-    gtePage.treeHash       = MOCK_PAGE_HASH;
+    gtePage.treeHash             = MOCK_PAGE_HASH;
 
-    const ltPage = splitOffLt(gtePage, 1, updatedPaged =>
+    const ltPage = splitOffLt(gtePage, 1, updatedPage =>
     {
-      gtePage = updatedPaged;
+      gtePage = updatedPage;
     });
-
-    expect(ltPage).toBeNull();
 
     expect(gtePage.level).toBe(42);
     expect(gtePage.treeHash).toBe(MOCK_PAGE_HASH);
     expect(gtePage.nodes).toEqual([new Node(2, MOCK_VALUE, null)]);
+
+    expect(ltPage).toBeNull();
   });
 
   test('test_split_page_single_node_gt_with_high_page_split', () =>
@@ -55,18 +55,15 @@ describe('Page Split Tests', () =>
     ]);
     highPage.treeHash = MOCK_PAGE_HASH;
 
-    let page      = new Page<any, number>(42, [new Node(5, MOCK_VALUE, null)]);
+    let page      = new Page(42, [new Node(5, MOCK_VALUE, null)]);
     page.treeHash = MOCK_PAGE_HASH;
     page.insertHighPage(highPage);
 
-    let ltPage = splitOffLt(page, 12, updatedPaged =>
+    const ltPage = splitOffLt(page, 12, updatedPage =>
     {
-      page = updatedPaged;
+      page = updatedPage;
     });
-    // console.log({
-    //   page,
-    //   ltPage
-    // })
+    // console.log('page', page);
     expect(page.level).toBe(40);
     expect(page.treeHash).toBeNull();
     expect(page.nodes).toEqual([new Node(15, MOCK_VALUE, null)]);
@@ -115,7 +112,7 @@ describe('Page Split Tests', () =>
       new Node(2, MOCK_VALUE, null),
       new Node(4, MOCK_VALUE, null),
     ]);
-    gtePage.treeHash       = MOCK_PAGE_HASH;
+    gtePage.treeHash               = MOCK_PAGE_HASH;
 
     const ltPage = splitOffLt(gtePage, 2, updatedPage =>
     {
@@ -140,7 +137,7 @@ describe('Page Split Tests', () =>
       new Node(2, MOCK_VALUE, null),
       new Node(4, MOCK_VALUE, null),
     ]);
-    gtePage.treeHash       = MOCK_PAGE_HASH;
+    gtePage.treeHash               = MOCK_PAGE_HASH;
 
     const ltPage = splitOffLt(gtePage, 3, updatedPage =>
     {
@@ -165,7 +162,7 @@ describe('Page Split Tests', () =>
       new Node(2, MOCK_VALUE, null),
       new Node(4, MOCK_VALUE, null),
     ]);
-    gtePage.treeHash       = MOCK_PAGE_HASH;
+    gtePage.treeHash               = MOCK_PAGE_HASH;
 
     const ltPage = splitOffLt(gtePage, 0, updatedPage =>
     {
@@ -189,7 +186,7 @@ describe('Page Split Tests', () =>
       new Node(2, MOCK_VALUE, null),
       new Node(4, MOCK_VALUE, null),
     ]);
-    gtePage.treeHash       = MOCK_PAGE_HASH;
+    gtePage.treeHash               = MOCK_PAGE_HASH;
 
     const ltPage = splitOffLt(gtePage, 10, updatedPage =>
     {
@@ -209,6 +206,7 @@ describe('Page Split Tests', () =>
   test('test_upsert_less_than_split_child', () =>
   {
     let p = new Page(1, [new Node(4, MOCK_VALUE, null)]);
+
     p.upsert(3, 0, MOCK_VALUE);
     p.upsert(1, 0, MOCK_VALUE);
     p.upsert(2, 1, MOCK_VALUE);
@@ -231,7 +229,7 @@ describe('Page Split Tests', () =>
       root = updatedPage;
     });
     expect(ltPage.level).toBe(52);
-    expect(ltPage.nodes[0].getKey()).toBe(86);
+    expect(ltPage.nodes[0].key).toBe(86);
   });
 
   test('test_split_page_recursive_high_page', () =>
@@ -250,10 +248,11 @@ describe('Page Split Tests', () =>
       root = updatedPage;
     });
     expect(ltPage.level).toBe(42);
-    expect(ltPage.nodes[0].getKey()).toBe(42);
+    expect(ltPage.nodes[0].key).toBe(42);
 
     expect(root.level).toBe(32);
-    expect(root.nodes[0].getKey()).toBe(44);
+    expect(root.nodes[0].key).toBe(44);
   });
 });
+
 

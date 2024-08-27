@@ -55,7 +55,7 @@ class Node
   {
     const newNode = new Node();
     newNode.store = new Map(this.store);
-    newNode.tree  = this.tree.clone();
+    newNode.tree  = this.tree;
     return newNode;
   }
 }

@@ -36,7 +36,8 @@
   "dependencies": {
     "@scure/base": "^1.1.7",
     "@noble/hashes": "^1.4.0",
-    "debug": "^4.3.4",
-    "it-peekable": "^3.0.5"
+    "debug": "4.3.5",
+    "it-peekable": "^3.0.5",
+    "itertools": "^2.3.2"
   }
 }

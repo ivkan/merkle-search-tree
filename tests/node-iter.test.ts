@@ -1,8 +1,7 @@
 import { Digest, ValueDigest } from '../src';
 import { Page, Node, NodeIter } from '../src';
-import { IntKey } from './test-util';
 
-const MOCK_VALUE: ValueDigest<32> = new ValueDigest(new Digest(new Uint8Array(32).fill(0)));
+const MOCK_VALUE: ValueDigest<32> = new ValueDigest(new Digest(new Uint8Array(32)));
 
 //                    ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
 //                      ┌───┬───┬───────┐
@@ -28,30 +27,30 @@ describe('Order Test', () =>
 {
   test('test order', () =>
   {
-    const lt0 = new Page(0, [new Node(new IntKey(2), MOCK_VALUE, null)]);
-    const gt0 = new Page(0, [new Node(new IntKey(5), MOCK_VALUE, null)]);
+    const lt0 = new Page(0, [new Node(2, MOCK_VALUE, null)]);
+    const gt0 = new Page(0, [new Node(5, MOCK_VALUE, null)]);
 
     const lt1 = new Page(1, [
-      new Node(new IntKey(3), MOCK_VALUE, lt0),
-      new Node(new IntKey(4), MOCK_VALUE, null),
-      new Node(new IntKey(6), MOCK_VALUE, gt0),
+      new Node(3, MOCK_VALUE, lt0),
+      new Node(4, MOCK_VALUE, null),
+      new Node(6, MOCK_VALUE, gt0),
     ]);
 
-    const high2 = new Page(1, [new Node(new IntKey(42), MOCK_VALUE, null)]);
-    const high  = new Page(1, [new Node(new IntKey(15), MOCK_VALUE, null)]);
+    const high2 = new Page(1, [new Node(42, MOCK_VALUE, null)]);
+    const high  = new Page(1, [new Node(15, MOCK_VALUE, null)]);
     high.insertHighPage(high2);
 
     const root = new Page(2, [
-      new Node(new IntKey(7), MOCK_VALUE, lt1),
-      new Node(new IntKey(11), MOCK_VALUE, null),
+      new Node(7, MOCK_VALUE, lt1),
+      new Node(11, MOCK_VALUE, null),
     ]);
     root.insertHighPage(high);
 
     const keyOrder = Array.from(new NodeIter(root))
       .map(v => v.getKey())
-      .filter((key): key is IntKey => key !== undefined);
+      .filter((key) => key !== undefined);
 
-    expect(keyOrder.map(k => k.asNumber())).toEqual([2, 3, 4, 5, 6, 7, 11, 15, 42]);
+    expect(keyOrder).toEqual([2, 3, 4, 5, 6, 7, 11, 15, 42]);
   });
 });
 

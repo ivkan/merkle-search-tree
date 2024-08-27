@@ -28,7 +28,7 @@ export class DiffListBuilder<K>
    */
   inconsistent(start: K, end: K): void
   {
-    console.log({ start, end }, 'marking range inconsistent');
+    // console.trace({ start, end }, 'marking range inconsistent');
     this._inconsistent.insert(start, end);
   }
 
@@ -73,18 +73,12 @@ export function reduceSyncRange<K>(
 
       if (bad.start < good.start)
       {
-        out.push({
-          start: bad.start,
-          end  : good.start
-        });
+        out.push(new DiffRange(bad.start, good.start));
       }
 
       if (bad.end > good.end)
       {
-        out.push({
-          start: good.end,
-          end  : bad.end
-        });
+        out.push(new DiffRange(good.end, bad.end));
       }
 
       return out;

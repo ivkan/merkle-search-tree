@@ -110,24 +110,25 @@ Number.prototype.new = function (v: bigint|number)
 
 // A mock peer, storing `(key, value)` tuples and maintaining a
 // `MerkleSearchTree` of the store contents.
-export class Node
+export type NumericType = number|bigint;
+export class TestNode
 {
-  private readonly store: Map<number, number>;
-  private tree: MerkleSearchTree<number, number>;
+  private readonly store: Map<NumericType, number>;
+  private tree: MerkleSearchTree<NumericType, number>;
 
   constructor()
   {
-    this.store = new Map<number, number>();
-    this.tree  = new MerkleSearchTree<number, number>();
+    this.store = new Map<NumericType, number>();
+    this.tree  = new MerkleSearchTree<NumericType, number>();
   }
 
-  upsert(key: number, value: number): void
+  upsert(key: NumericType, value: number): void
   {
     this.tree.upsert(key, value);
     this.store.set(key, value);
   }
 
-  pageRanges(): PageRange<number>[]
+  pageRanges(): PageRange<NumericType>[]
   {
     this.tree.rootHash();
     return this.tree.serialisePageRanges();
@@ -138,8 +139,8 @@ export class Node
   // }
   // Return an iterator over the specified inclusive range of keys.
   * keyRangeIter(
-    keyRange: [number, number],
-  ): IterableIterator<[number, number]>
+    keyRange: [NumericType, number],
+  ): IterableIterator<[NumericType, number]>
   {
     for (const [key, value] of this.store.entries())
     {
@@ -155,7 +156,7 @@ export class Node
     return this.store.size;
   }
 
-  [Symbol.iterator](): IterableIterator<[number, number]>
+  [Symbol.iterator](): IterableIterator<[NumericType, number]>
   {
     return this.store[Symbol.iterator]();
   }

@@ -219,7 +219,7 @@ export function splitOffLt<N extends number, K>(
   // nodes to return.
   if (partitionIdx === page.nodes.length)
   {
-    console.assert(pageRef.minKey() <= key, 'Assertion failed: page_ref.minKey() > key');
+    console.assert(pageRef.minKey() <= key, 'Assertion failed: pageRef.minKey() > key');
 
     // The first gte node may have a ltPointer with nodes that are lt key.
     if (pageRef.nodes[0].ltPointer)
@@ -285,13 +285,14 @@ export function splitOffLt<N extends number, K>(
     // This puts an empty page into page_ref, taking the new lt nodes in
     // page (potentially with the high page linked to lt_high_nodes)
     const ltPage = pageRef;
-    page         = new Page(pageRef.level, []);
+    // page         = new Page(pageRef.level, []);
 
     // Put the gte nodes into the input page, if any (page should contain
     // all gte nodes after this split).
     if (gteHighPage)
     {
-      page.nodes = [...gteHighPage.nodes];
+      // page         = new Page(gteHighPage.level, [...gteHighPage.nodes]);
+      page = gteHighPage;
     }
     else
     {

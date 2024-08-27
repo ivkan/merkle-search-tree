@@ -1,7 +1,9 @@
-import { Keccak, shake128 } from '@noble/hashes/sha3';
-import { HashXOF } from '@noble/hashes/utils';
+// import { Keccak, shake128 } from '@noble/hashes/sha3';
+// import { HashXOF } from '@noble/hashes/utils';
+import { sha256 } from '@noble/hashes/sha256'
 import { Digest } from './digest';
 import { isUint8Array } from '../../utils/uint8array';
+import { Hash } from '@noble/hashes/utils';
 
 export interface HasherInputStringify
 {
@@ -25,11 +27,11 @@ export type HasherInput = Uint8Array|string|number|HasherInputStringify;
 
 export class SipHasher implements Hasher<16>
 {
-  private hasher: HashXOF<HashXOF<Keccak>>;
+  private hasher: Hash<any>; // HashXOF<HashXOF<Keccak>>;
 
   constructor()
   {
-    this.hasher = shake128.create({ dkLen: 16 });
+    this.hasher = sha256.create(); // shake128.create({ dkLen: 16 });
   }
 
   // Initialise a SipHasher with the provided seed key.

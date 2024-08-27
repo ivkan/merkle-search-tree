@@ -1,4 +1,5 @@
 import { Digest } from './digest';
+import { equalBytes } from '../../utils/uint8array';
 
 /**
  * The root hash of a `MerkleSearchTree`, representative of the state of the
@@ -65,6 +66,11 @@ export class PageDigest
   clone(): PageDigest
   {
     return new PageDigest(this.value.asBytes());
+  }
+
+  equals(other: PageDigest): boolean
+  {
+    return equalBytes(this.value.asBytes(), other.value.asBytes())
   }
 }
 

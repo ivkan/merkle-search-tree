@@ -12,11 +12,14 @@ dependencies:
     specifier: ^1.1.7
     version: 1.1.7
   debug:
-    specifier: ^4.3.4
-    version: 4.3.4
+    specifier: 4.3.5
+    version: 4.3.5
   it-peekable:
     specifier: ^3.0.5
     version: 3.0.5
+  itertools:
+    specifier: ^2.3.2
+    version: 2.3.2
 
 devDependencies:
   '@egoist/prettier-config':
@@ -85,7 +88,7 @@ packages:
       '@babel/traverse': 7.25.3
       '@babel/types': 7.25.2
       convert-source-map: 2.0.0
-      debug: 4.3.4
+      debug: 4.3.5
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -372,7 +375,7 @@ packages:
       '@babel/parser': 7.25.3
       '@babel/template': 7.25.0
       '@babel/types': 7.25.2
-      debug: 4.3.4
+      debug: 4.3.5
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -1337,8 +1340,8 @@ packages:
       which: 2.0.2
     dev: true
 
-  /debug@4.3.4:
-    resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
+  /debug@4.3.5:
+    resolution: {integrity: sha512-pt0bNEmneDIvdL1Xsd9oDQ/wrQRkXDT4AUWlNZNPKvW5x/jyO9VFXkJUP07vQ2upmw5PlaITaPKc31jK13V+jg==}
     engines: {node: '>=6.0'}
     peerDependencies:
       supports-color: '*'
@@ -1766,7 +1769,7 @@ packages:
     resolution: {integrity: sha512-n3s8EwkdFIJCG3BPKBYvskgXGoy88ARzvegkitk60NxRdwltLOTaH7CUiMRXvwYorl0Q712iEjcWB+fK/MrWVw==}
     engines: {node: '>=10'}
     dependencies:
-      debug: 4.3.4
+      debug: 4.3.5
       istanbul-lib-coverage: 3.2.2
       source-map: 0.6.1
     transitivePeerDependencies:
@@ -1783,6 +1786,10 @@ packages:
 
   /it-peekable@3.0.5:
     resolution: {integrity: sha512-JWQOGMt6rKiPcY30zUVMR4g6YxkpueTwHVE7CMs/aGqCf4OydM6w+7ZM3PvmO1e0TocjuR4aL8xyZWR46cTqCQ==}
+    dev: false
+
+  /itertools@2.3.2:
+    resolution: {integrity: sha512-urRg24zOOKt4qQHm3gzQLK5Mima/kMSP3DUfcVw05W3veUHxxqHPTEW08aKY9GIZm9CKvnULVqXdjZWNYalJHQ==}
     dev: false
 
   /jake@10.9.2:
@@ -2842,7 +2849,7 @@ packages:
       bundle-require: 4.0.1(esbuild@0.17.8)
       cac: 6.7.14
       chokidar: 3.5.3
-      debug: 4.3.4
+      debug: 4.3.5
       esbuild: 0.17.8
       execa: 5.1.1
       globby: 11.1.0

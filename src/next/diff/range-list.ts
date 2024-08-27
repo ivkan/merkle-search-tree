@@ -21,7 +21,7 @@ export class RangeList<K>
     {
       throw new Error('Start must be less than or equal to end');
     }
-    this.syncRanges.push({ start, end });
+    this.syncRanges.push(new DiffRange( start, end ));
   }
 
   /**

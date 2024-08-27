@@ -18,6 +18,21 @@ export class PageRange<K>
   end: K;
   hash: PageDigest;
 
+
+  getStart()
+  {
+    return this.start;
+  }
+  getEnd()
+  {
+    return this.end;
+  }
+  getHash()
+  {
+    return this.hash;
+  }
+
+
   /**
    * Construct a `PageRange` for the given key interval and `PageDigest`.
    *
