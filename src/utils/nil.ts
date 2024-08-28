@@ -12,3 +12,8 @@ export function notNil(value: unknown): boolean
 {
   return !isNull(value) && !isUndefined(value);
 }
+
+export function isNil(value: unknown): boolean
+{
+  return isNull(value) || isUndefined(value);
+}

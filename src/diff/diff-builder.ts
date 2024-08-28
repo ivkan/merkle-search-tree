@@ -5,13 +5,13 @@ import { HasherInput } from '../digest';
 
 /**
  * Helper to construct an ordered, minimal list of non-overlapping
- * `DiffRange` from a set of inconsistent intervals, and a set of consistent
+ * DiffRange from a set of inconsistent intervals, and a set of consistent
  * intervals.
  *
  * Range bounds are always inclusive.
  *
  * Precedence is given towards the consistent list - if a single identical
- * range is marked both inconsistent and consistent, is is treated as a
+ * range is marked both inconsistent and consistent, is treated as a
  * consistent range.
  */
 export class DiffListBuilder<K extends HasherInput>
@@ -30,7 +30,7 @@ export class DiffListBuilder<K extends HasherInput>
    */
   inconsistent(start: K, end: K): void
   {
-    debug({ start, end }, 'marking range inconsistent');
+    debug('marking range inconsistent', { start, end });
     this._inconsistent.insert(start, end);
   }
 
@@ -39,7 +39,7 @@ export class DiffListBuilder<K extends HasherInput>
    */
   consistent(start: K, end: K): void
   {
-    debug({ start, end }, 'marking range as consistent');
+    debug('marking range as consistent', { start, end });
     this._consistent.insert(start, end);
   }
 
@@ -59,14 +59,12 @@ export function reduceSyncRange<K>(
 ): DiffRange<K>[]
 {
   // The output array of ranges that require syncing.
-  //
   // This array should never contain any overlapping (before this call).
-
   for (const good of consistentRanges)
   {
     badRanges = badRanges.flatMap(bad =>
     {
-      if (!overlaps(good, bad))
+      if (!good.overlaps(bad))
       {
         return [bad];
       }
@@ -94,21 +92,8 @@ export function reduceSyncRange<K>(
   // Merge overlapping ranges in the newly hole-punched ranges
   mergeOverlapping(badRanges);
 
-  // Invariant: the output ranges contain no overlapping entries
-  if (process.env.NODE_ENV === 'development')
-  {
-    for (let i = 0; i < badRanges.length - 1; i++)
-    {
-      console.assert(!overlaps(badRanges[i], badRanges[i + 1]));
-    }
-  }
-
   return badRanges;
 }
 
-export function overlaps<K>(a: DiffRange<K>, b: DiffRange<K>): boolean
-{
-  return a.start <= b.end && b.start <= a.end;
-}
 
 

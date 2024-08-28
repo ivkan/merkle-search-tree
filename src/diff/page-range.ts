@@ -9,13 +9,74 @@ import { Page } from '../page';
  * difference calculation, used as the input to the `diff()` function.
  *
  * The contents of this type can be serialised and transmitted over the
- * network, and reconstructed by the receiver by calling `new PageRange()`
+ * network, and reconstructed by the receiver by calling `PageRange.new()`
  * with the serialised values.
+ *
+ * # Exchanging Between Peers
+ *
+ * Exchange the ordered sets of `PageRange` between peers by serialising
+ * their content, accessed through the accessor methods:
+ *
+ * ```typescript
+ * // A network wire representation used by the application.
+ * interface NetworkPage {
+ *     start_bounds: string;
+ *     end_bounds: string;
+ *     hash: Uint8Array;
+ * }
+ *
+ * let t = new MerkleSearchTree<string, string>();
+ * t.upsert("bananas", "platanos");
+ * t.rootHash();
+ *
+ * const networkRequest: NetworkPage[] = t
+ *     .serialisePageRanges()
+ *     .map(page => ({
+ *         start_bounds: page.start,
+ *         end_bounds: page.end,
+ *         hash: page.hash.asBytes(),
+ *     }));
+ *
+ * // Send networkRequest to a peer over the network
+ * ```
+ *
+ * And reconstruct the `PageRange` on the receiver:
+ *
+ * ```typescript
+ * // Receive networkRequest from a peer over the network
+ *
+ * // PageRange construction is zero-copy for the page keys, borrowing the keys
+ * // from the underlying network request.
+ * const pageRefs = networkRequest
+ *     .map(p => {
+ *         // If this request is coming from an untrusted source, validate that
+ *         // start <= end to avoid the PageRange constructor error.
+ *         return PageRange.new(p.start_bounds, p.end_bounds, PageDigest.new(p.hash));
+ *     });
+ *
+ * // Feed pageRefs into diff()
+ * ```
+ *
+ * # Borrowed vs. Owned
+ *
+ * A `PageRange` borrows the keys from the tree to avoid unnecessary clones,
+ * retaining an immutable reference to the tree.
+ *
+ * If an owned / long-lived set of `PageRange` is desired (avoiding the
+ * immutable reference to the tree), generate a `PageRangeSnapshot` from the
+ * set of `PageRange`.
  */
 export class PageRange<K>
 {
+  /**
+   * The inclusive start & end key bounds of this range.
+   */
   readonly start: K;
   readonly end: K;
+
+  /**
+   * The hash of this page, and the sub-tree rooted at it.
+   */
   readonly hash: PageDigest;
 
   /**
@@ -26,7 +87,7 @@ export class PageRange<K>
     return new PageRange(
       page.minSubtreeKey(),
       page.maxSubtreeKey(),
-      page.hash() ?? new PageDigest() // Assuming PageDigest has a default constructor
+      page.hash() ?? new PageDigest()
     );
   }
 
@@ -39,27 +100,11 @@ export class PageRange<K>
   {
     if (start > end)
     {
-      throw new Error('start must be less than or equal to end');
+      throw new Error('PageRange: start must be less than or equal to end');
     }
     this.start = start;
     this.end   = end;
     this.hash  = hash;
-  }
-
-  /**
-   * Returns the inclusive start of this `PageRange`.
-   */
-  getStart(): K
-  {
-    return this.start;
-  }
-
-  /**
-   * Returns the inclusive end of this `PageRange`
-   */
-  getEnd(): K
-  {
-    return this.end;
   }
 
   /**
@@ -69,24 +114,6 @@ export class PageRange<K>
   isSupersetOf(other: PageRange<K>): boolean
   {
     return this.start <= other.start && other.end <= this.end;
-  }
-
-  /**
-   * Returns the `PageDigest` of this page, representing the content of the
-   * page and all pages within the sub-tree rooted at it.
-   */
-  getHash(): PageDigest
-  {
-    return this.hash;
-  }
-
-  /**
-   * Consume this `PageRange`, returning the `PageDigest` that covers the
-   * subtree rooted at this page.
-   */
-  intoHash(): PageDigest
-  {
-    return this.hash;
   }
 
   toString(): string

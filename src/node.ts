@@ -49,30 +49,9 @@ export class Node<N extends number, K>
     return true;
   }
 
-  /**
-   * Return the key of this node.
-   */
-  getKey(): K
-  {
-    return this.key;
-  }
-
-  /**
-   * Return the hash of the value for this node.
-   */
-  getValueHash(): ValueDigest<N>
-  {
-    return this.valueHash;
-  }
-
   updateValueHash(hash: ValueDigest<N>): void
   {
     this.valueHash = hash;
-  }
-
-  getLtPointer(): Page<N, K>|null
-  {
-    return this.ltPointer;
   }
 
   setLtPointer(pointer: Page<N, K>|null): void

@@ -231,7 +231,7 @@ describe('Page Split Tests', () =>
       root = updatedPage;
     });
     expect(ltPage.level).toBe(52);
-    expect(ltPage.nodes[0].getKey()).toBe(86);
+    expect(ltPage.nodes[0].key).toBe(86);
   });
 
   test('test_split_page_recursive_high_page', () =>
@@ -250,10 +250,10 @@ describe('Page Split Tests', () =>
       root = updatedPage;
     });
     expect(ltPage.level).toBe(42);
-    expect(ltPage.nodes[0].getKey()).toBe(42);
+    expect(ltPage.nodes[0].key).toBe(42);
 
     expect(root.level).toBe(32);
-    expect(root.nodes[0].getKey()).toBe(44);
+    expect(root.nodes[0].key).toBe(44);
   });
 });
 

@@ -33,7 +33,7 @@ import { HasherInput } from '../digest';
  */
 export class PageRangeSnapshot<K extends HasherInput>
 {
-  private ranges: OwnedPageRange<K>[];
+  private readonly ranges: OwnedPageRange<K>[];
 
   constructor(ranges: OwnedPageRange<K>[])
   {
@@ -88,9 +88,9 @@ export class OwnedPageRange<K extends HasherInput>
   static from<K extends HasherInput>(v: PageRange<K>): OwnedPageRange<K>
   {
     return new OwnedPageRange(
-      structuredClone(v.getStart()),
-      structuredClone(v.getEnd()),
-      v.intoHash()
+      structuredClone(v.start),
+      structuredClone(v.end),
+      v.hash
     );
   }
 
@@ -104,7 +104,7 @@ export class OwnedPageRange<K extends HasherInput>
   {
     if (start > end)
     {
-      throw new Error('start must be less than or equal to end');
+      throw new Error('OwnedPageRange: start must be less than or equal to end');
     }
     this.start = start;
     this.end   = end;

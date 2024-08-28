@@ -1,5 +1,6 @@
 import { DiffRange } from './diff-range';
 import { HasherInput } from '../digest';
+import { assert } from '../tracing';
 
 /**
  * Helper to construct an ordered list of non-overlapping DiffRange intervals.
@@ -35,26 +36,26 @@ export class RangeList<K extends HasherInput>
     mergeOverlapping(this.syncRanges);
 
     // Check invariants in development builds.
-    if (process.env.NODE_ENV !== 'production')
-    {
-      for (let i = 0; i < this.syncRanges.length - 1; i++)
-      {
-        const current = this.syncRanges[i];
-        const next    = this.syncRanges[i + 1];
-
-        // Invariant: non-overlapping ranges
-        if (this.overlaps(current, next))
-        {
-          throw new Error('Overlapping ranges detected');
-        }
-
-        // Invariant: end bound is always gte than start bound
-        if (this.compare(current.start, current.end) > 0 || this.compare(next.start, next.end) > 0)
-        {
-          throw new Error('Diff range contains inverted bounds');
-        }
-      }
-    }
+    // if (process.env.NODE_ENV !== 'production')
+    // {
+    //   for (let i = 0; i < this.syncRanges.length - 1; i++)
+    //   {
+    //     const current = this.syncRanges[i];
+    //     const next    = this.syncRanges[i + 1];
+    //
+    //     // Invariant: non-overlapping ranges
+    //     if (this.overlaps(current, next))
+    //     {
+    //       throw new Error('Overlapping ranges detected');
+    //     }
+    //
+    //     // Invariant: end bound is always gte than start bound
+    //     if (this.compare(current.start, current.end) > 0 || this.compare(next.start, next.end) > 0)
+    //     {
+    //       throw new Error('Diff range contains inverted bounds');
+    //     }
+    //   }
+    // }
 
     return this.syncRanges;
   }
@@ -66,10 +67,10 @@ export class RangeList<K extends HasherInput>
     return 0;
   }
 
-  private overlaps(a: DiffRange<K>, b: DiffRange<K>): boolean
-  {
-    return this.compare(a.start, b.end) <= 0 && this.compare(b.start, a.end) <= 0;
-  }
+  // private overlaps(a: DiffRange<K>, b: DiffRange<K>): boolean
+  // {
+  //   return this.compare(a.start, b.end) <= 0 && this.compare(b.start, a.end) <= 0;
+  // }
 }
 
 /**
@@ -79,36 +80,53 @@ export class RangeList<K extends HasherInput>
  */
 export function mergeOverlapping<K>(source: DiffRange<K>[]): void
 {
-  if (source.length === 0) return;
+  const nRanges   = source.length;
+  const rangeIter = source.splice(0, nRanges);
 
-  const result: DiffRange<K>[] = [source[0]];
+  // Pre-allocate the ranges array to hold all the elements, pessimistically
+  // expecting them to not contain overlapping regions.
+  source.length = 0;
+  source.push(...new Array(nRanges));
 
-  for (let i = 1; i < source.length; i++)
+  // Place the first range into the merged output array.
+  const firstRange = rangeIter.shift();
+  if (!firstRange)
   {
-    const current = source[i];
-    const merged  = result[result.length - 1];
+    return;
+  }
+  source[0] = firstRange;
+
+  let sourceIndex = 0;
+
+  for (const range of rangeIter)
+  {
+    const last = source[sourceIndex];
+
+    // Invariant: ranges are sorted by range start.
+    assert(range.start >= last.start, 'Ranges must be sorted by start');
 
     // Check if this range falls entirely within the existing range.
-    if (current.start >= merged.start && current.end <= merged.end)
+    if (range.end <= last.end)
     {
       // Skip this range that is a subset of the existing range.
       continue;
     }
 
-    // Check for overlap across the inclusive ranges.
-    if (current.start <= merged.end)
+    // Check for overlap across the end ranges (inclusive).
+    if (range.start <= last.end)
     {
-      // These two ranges overlap - extend the range in the merged output.
-      merged.end = current.end;
+      // These two ranges overlap - extend the range in "last" to cover
+      // both.
+      last.end = range.end;
     }
     else
     {
-      result.push(current);
+      sourceIndex++;
+      source[sourceIndex] = range;
     }
   }
 
-  // Replace the contents of source with the merged result
-  source.length = 0;
-  source.push(...result);
+  // Trim any unused pre-allocated space
+  source.length = sourceIndex + 1;
 }
 

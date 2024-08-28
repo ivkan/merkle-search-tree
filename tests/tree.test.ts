@@ -348,7 +348,7 @@ describe('MerkleSearchTree', () =>
     }
 
     const data = Array.from(inserted).sort((a, b) => Number(a) - Number(b));
-    const got = Array.from(t.nodeIter()).map(v => v.getKey());
+    const got = Array.from(t.nodeIter()).map(v => v.key);
 
     console.log({ data, got });
 

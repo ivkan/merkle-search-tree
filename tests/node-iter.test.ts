@@ -47,7 +47,7 @@ describe('Order Test', () =>
     root.insertHighPage(high);
 
     const keyOrder = Array.from(new NodeIter(root))
-      .map(v => v.getKey())
+      .map(v => v.key)
       .filter((key) => key !== undefined);
 
     expect(keyOrder).toEqual([2, 3, 4, 5, 6, 7, 11, 15, 42]);

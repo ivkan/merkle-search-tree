@@ -46,11 +46,16 @@ export interface Hasher<N extends number>
   digest?(): Uint8Array;
 }
 
-// A fast, non-cryptographic hash outputting 128-bit digests.
-export class SipHasher<N extends number = 16> implements Hasher<N>
+export class BaseHasher<N extends number = 16> implements Hasher<N>
 {
   hasher: Hash<any>;
 
+  /**
+   * Initialise a BaseHasher with the provided seed key.
+   *
+   * All peers comparing tree hashes MUST be initialised with the same seed
+   * key.
+   */
   constructor(key?: Uint8Array, outputLen = 16)
   {
     if (key && key.length === 16)
@@ -84,9 +89,9 @@ export class SipHasher<N extends number = 16> implements Hasher<N>
     return this.hasher.digest();
   }
 
-  clone(): SipHasher<N>
+  clone(): BaseHasher<N>
   {
-    return new SipHasher<N>(this.hasher.clone().digest());
+    return new BaseHasher<N>(this.hasher.clone().digest());
   }
 }
 

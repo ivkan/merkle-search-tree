@@ -1,5 +1,6 @@
 import { diff, DiffRange, PageDigest, PageRange } from '../src';
 import { TestNode } from './test-util'
+import _debug from 'debug';
 
 function newDigest(lsb: number): PageDigest
 {
@@ -34,6 +35,9 @@ describe('PageRange tests', () =>
 
   it('test no diff', () =>
   {
+    const testDebug = _debug('test 1');
+    // testDebug.enabled = true;
+    testDebug('run');
     const local = [
       new PageRange(2, 15, newDigest(1)),
       new PageRange(2, 6, newDigest(2)),
@@ -66,7 +70,7 @@ describe('PageRange tests', () =>
 
     // Invalidate the root/parent and update the peer root range to reflect
     // the missing last page
-    peer[0] = new PageRange(peer[0].getStart(), 11, newDigest(42));
+    peer[0] = new PageRange(peer[0].start, 11, newDigest(42));
 
     // Nothing to ask for - the peer is behind
     expect(diff(local, peer).length === 0);
@@ -89,7 +93,7 @@ describe('PageRange tests', () =>
 
     // Invalidate the root/parent and update the local root range to reflect
     // the missing last page
-    local[0] = new PageRange(local[0].getStart(), 11, newDigest(42));
+    local[0] = new PageRange(local[0].start, 11, newDigest(42));
 
     const result1 = diff(local, peer);
     const result2 = [new DiffRange(6, 15)];
@@ -212,10 +216,10 @@ describe('PageRange tests', () =>
 
     let peer  = [...local];
     const end = peer.pop();
-    peer.push(new PageRange(end.getStart(), 16, newDigest(42)));
+    peer.push(new PageRange(end.start, 16, newDigest(42)));
 
     // Root hash differs to reflect differing child
-    peer[0] = new PageRange(peer[0].getStart(), 16, newDigest(42));
+    peer[0] = new PageRange(peer[0].start, 16, newDigest(42));
 
     expect(diff(local, peer)).toEqual([new DiffRange(6, 16)]);
   });
@@ -233,7 +237,7 @@ describe('PageRange tests', () =>
     let peer = [...local];
 
     // Root hash differs due to added key 8
-    peer[0] = new PageRange(peer[0].getStart(), peer[0].getEnd(), newDigest(42));
+    peer[0] = new PageRange(peer[0].start, peer[0].end, newDigest(42));
 
     // Without the reduce_sync_range optimisation, this root inconsistency
     // would cause a fetch against the whole tree (start: 2, end: 15).
@@ -261,9 +265,9 @@ describe('PageRange tests', () =>
     let peer = [...local];
 
     // Root hash differs due to added key 8
-    peer[1] = new PageRange(peer[1].getStart(), 7, newDigest(42));
+    peer[1] = new PageRange(peer[1].start, 7, newDigest(42));
 
-    peer[0] = new PageRange(peer[0].getStart(), peer[0].getEnd(), newDigest(42));
+    peer[0] = new PageRange(peer[0].start, peer[0].end, newDigest(42));
 
     expect(diff(local, peer)).toEqual([new DiffRange(2, 15)]);
   });
@@ -287,22 +291,22 @@ describe('PageRange tests', () =>
     let peer = [...local];
 
     // Extend key range of 1st child to 2-6 to 2-7
-    peer[1] = new PageRange(peer[1].getStart(), 7, newDigest(42));
+    peer[1] = new PageRange(peer[1].start, 7, newDigest(42));
 
     // Key 2 value change
-    peer[2] = new PageRange(peer[2].getStart(), peer[2].getEnd(), newDigest(42));
+    peer[2] = new PageRange(peer[2].start, peer[2].end, newDigest(42));
 
     // Root hash
-    peer[0] = new PageRange(peer[0].getStart(), peer[0].getEnd(), newDigest(42));
+    peer[0] = new PageRange(peer[0].start, peer[0].end, newDigest(42));
 
     expect(diff(local, peer)).toEqual([new DiffRange(2, 15)]);
 
     let localCopy = [...peer];
 
     // Only 2 should remain different - reset the hash.
-    localCopy[2] = new PageRange(localCopy[2].getStart(), localCopy[2].getEnd(), newDigest(3));
-    peer[1]      = new PageRange(peer[1].getStart(), peer[1].getEnd(), newDigest(2));
-    peer[0]      = new PageRange(peer[0].getStart(), peer[0].getEnd(), newDigest(1));
+    localCopy[2] = new PageRange(localCopy[2].start, localCopy[2].end, newDigest(3));
+    peer[1]      = new PageRange(peer[1].start, peer[1].end, newDigest(2));
+    peer[0]      = new PageRange(peer[0].start, peer[0].end, newDigest(1));
 
     // 2, 15 because the root page is inconsistent and there's no consistent
     // pages that shrink the range.

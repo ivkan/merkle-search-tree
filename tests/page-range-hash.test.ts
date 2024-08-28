@@ -1,4 +1,4 @@
-import { Digest, Node, Page, PageRangeHashVisitor, SipHasher, ValueDigest } from '../src';
+import { Digest, Node, Page, PageRangeHashVisitor, BaseHasher, ValueDigest } from '../src';
 
 const MOCK_VALUE: ValueDigest<32> = new ValueDigest(new Digest(new Uint8Array(32)));
 
@@ -43,14 +43,14 @@ describe('PageRangeHashVisitor', () => {
     ]);
     root.insertHighPage(high);
 
-    root.maybeGenerateHash(new SipHasher());
+    root.maybeGenerateHash(new BaseHasher());
 
     const v = new PageRangeHashVisitor<16, number>();
     root.inOrderTraversal(v, false);
 
     const got = v.finalise().map(v => [
-      v.getStart(),
-      v.getEnd()
+      v.start,
+      v.end
     ]);
 
     // Pre-order page traversal:
@@ -70,14 +70,14 @@ describe('PageRangeHashVisitor', () => {
       new Node(Number(4), MOCK_VALUE, level0),
     ]);
 
-    level1.maybeGenerateHash(new SipHasher());
+    level1.maybeGenerateHash(new BaseHasher());
 
     const v = new PageRangeHashVisitor<16, number>();
     level1.inOrderTraversal(v, false);
 
     const got = v.finalise().map(v => [
-      v.getStart(),
-      v.getEnd()
+      v.start,
+      v.end
     ]);
 
     // Pre-order page traversal:

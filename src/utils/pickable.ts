@@ -1,4 +1,4 @@
-import { notNil } from '../utils/not-nil';
+import { notNil } from './nil';
 
 export class Peekable<T>
 {

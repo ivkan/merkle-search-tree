@@ -1,4 +1,4 @@
-import { Visitor } from './visitor';
+import { DefaultVisitor, Visitor } from './visitor';
 import { PageRange } from '../diff';
 import { Page } from '../page';
 import { Node } from '../node';
@@ -6,28 +6,14 @@ import { Node } from '../node';
 /**
  * Record the page range & hashes for the visited pages.
  */
-export class PageRangeHashVisitor<N extends number, K> implements Visitor<N, K>
+export class PageRangeHashVisitor<N extends number, K> extends DefaultVisitor<N, K> implements Visitor<N, K>
 {
   private readonly out: PageRange<K>[];
 
   constructor()
   {
+    super();
     this.out = [];
-  }
-
-  preVisitNode(_node: Node<N, K>): boolean
-  {
-    return true;
-  }
-
-  postVisitPage(_page: Page<N, K>): boolean
-  {
-    return true;
-  }
-
-  postVisitNode(_node: Node<N, K>): boolean
-  {
-    return true;
   }
 
   visitNode(_node: Node<N, K>): boolean

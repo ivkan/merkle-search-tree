@@ -19,9 +19,9 @@ describe('MerkleSearchTree', () =>
 
     // Serialise
     const networkPages: NetworkPage[] = pageRanges.map(v => ({
-      start_bounds: v.getStart(),
-      end_bounds  : v.getEnd(),
-      hash        : v.getHash().asBytes(),
+      start_bounds: v.start,
+      end_bounds  : v.end,
+      hash        : v.hash.asBytes(),
     }));
 
     // Deserialise

@@ -1,178 +1,67 @@
 import { PageRange } from './page-range';
 import { DiffRange } from './diff-range';
 import { DiffListBuilder } from './diff-builder';
-import { Peekable } from '../next/diff/pickable';
-import { debug, trace } from '../next/tracing';
+import { debug, trace } from '../tracing';
 import { HasherInput } from '../digest';
+import { isNil } from '../utils/nil';
+import { Peekable } from '../utils/pickable';
 
-
-// export function diff<T extends Iterable<PageRange<K>>, U extends Iterable<PageRange<K>>, K extends HasherInput>(
-//   local: T,
-//   peer: U
-// ): DiffRange<K>[]
-// {
-//   const localIterator = local[Symbol.iterator]();
-//   const peerIterator  = peer[Symbol.iterator]();
-//
-//   const diffBuilder = new DiffListBuilder<K>();
-//
-//   const localPeekable = peekable(localIterator);
-//   const peerPeekable  = peekable(peerIterator);
-//
-//   const root = peerPeekable.peek();
-//   if (!root) return [];
-//
-//   recurseDiff(root, peerPeekable, localPeekable, diffBuilder);
-//
-//   return diffBuilder.intoDiffVec();
-// }
-//
-// function recurseSubtree<K extends HasherInput>(
-//   subtreeRoot: PageRange<K>,
-//   peer: Peekable<PageRange<K>>,
-//   local: Peekable<PageRange<K>>,
-//   diffBuilder: DiffListBuilder<K>
-// ): boolean
-// {
-//   recurseDiff(subtreeRoot, peer, local, diffBuilder);
-//
-//   while (peer.nextIf(v => subtreeRoot.isSupersetOf(v)))
-//   {
-//     if (peer.current())
-//     {
-//       // Add all the un-evaluated peer sub-tree pages to the sync list.
-//       diffBuilder.inconsistent(peer.current().getStart(), peer.current().getEnd());
-//     }
-//   }
-//
-//   return true;
-// }
-//
-// function recurseDiff<K extends HasherInput>(
-//   subtreeRoot: PageRange<K>,
-//   peer: Peekable<PageRange<K>>,
-//   local: Peekable<PageRange<K>>,
-//   diffBuilder: DiffListBuilder<K>
-// ): void
-// {
-//   let lastP: PageRange<K>|null = null;
-//
-//   while (true)
-//   {
-//     const p = maybeAdvanceWithin(subtreeRoot, peer);
-//     if (!p) return;
-//
-//     const l = maybeAdvanceWithin(p, local);
-//     if (!l)
-//     {
-//       const start = lastP ? lastP.getEnd() : subtreeRoot.getStart();
-//       const end   = local.peek()?.getStart() ?? p.getEnd();
-//       if (end >= start)
-//       {
-//         diffBuilder.inconsistent(start, end);
-//       }
-//       return;
-//     }
-//
-//     lastP = p;
-//
-//     while (local.nextIf(v => v.isSupersetOf(p)))
-//     {
-//     }
-//
-//     if (l.getHash().equals(p.getHash()))
-//     {
-//       diffBuilder.consistent(p.getStart(), p.getEnd());
-//       skipSubtree(p, peer);
-//     }
-//     else
-//     {
-//       diffBuilder.inconsistent(p.getStart(), p.getEnd());
-//     }
-//
-//     recurseSubtree(p, peer, local, diffBuilder);
-//   }
-// }
-//
-// function maybeAdvanceWithin<K>(parent: PageRange<K>, cursor: Peekable<PageRange<K>>): PageRange<K>|null
-// {
-//   if (cursor.peek() && !parent.isSupersetOf(cursor.peek()))
-//   {
-//     return null;
-//   }
-//   return cursor.next()?.value || null;
-// }
-//
-// function skipSubtree<K>(subtreeRoot: PageRange<K>, iter: Peekable<PageRange<K>>): void
-// {
-//   while (iter.nextIf(v => subtreeRoot.isSupersetOf(v)))
-//   {
-//   }
-// }
-//
-// function peekable<T>(iter: Iterator<T>): Peekable<T>
-// {
-//   let cache: T|null = null;
-//   return {
-//     next   : () =>
-//     {
-//       if (cache !== null)
-//       {
-//         const result = cache;
-//         cache        = null;
-//         return { value: result, done: false };
-//       }
-//       return iter.next();
-//     },
-//     peek   : () =>
-//     {
-//       if (cache === null)
-//       {
-//         const result = iter.next();
-//         if (!result.done)
-//         {
-//           cache = result.value;
-//         }
-//       }
-//       return cache;
-//     },
-//     nextIf : (predicate: (value: T) => boolean) =>
-//     {
-//       const next = iter.next();
-//       return !next.done && predicate(next.value);
-//
-//     },
-//     current: () => cache,
-//   };
-// }
-//
-// interface Peekable<T>
-// {
-//   next: () => IteratorResult<T>;
-//   peek: () => T|null;
-//   nextIf: (predicate: (value: T) => boolean) => boolean;
-//   current: () => T|null;
-// }
-
+/**
+ *  Compute the difference between 'local' and 'peer' and return the set of
+ *  DiffRange covering the inconsistent key ranges found in 'peer'.
+ *
+ *  ```typescript
+ *
+ *  // Initialise a "peer" tree.
+ *  const node_a = MerkleSearchTree.default();
+ *  node_a.upsert("bananas", 42);
+ *  node_a.upsert("platanos", 42);
+ *
+ *  // Initialise the "local" tree with differing keys
+ *  const node_b = MerkleSearchTree.default();
+ *  node_b.upsert("donkey", 42);
+ *
+ *  // Generate the tree hashes before serialising the page ranges
+ *  node_a.rootHash();
+ *  node_b.rootHash();
+ *
+ *  // Generate the tree page bounds & hashes, and feed into the diff function
+ *  const diffRange = diff(
+ *      node_b.serialisePageRanges(),
+ *      node_a.serialisePageRanges(),
+ *  );
+ *
+ *  // The diff_range contains all the inclusive key intervals the "local" tree
+ *  // should fetch from the "peer" tree to converge.
+ *  expect(diffRange.start).toEqual("bananas");
+ *  expect(diffRange.end).toEqual("plátanos");
+ *  ```
+ *
+ *  # State Convergence
+ *
+ *  To converge the state of the two trees, the key ranges in the returned DiffRange
+ *  instances should be requested from the `peer` and used to update the state of the `local`.
+ *
+ *  If `local` contains all the keys and consistent values of `peer` or the two trees are identical,
+ *  no DiffRange intervals are returned.
+ */
 export function diff<T extends Iterable<PageRange<K>>, U extends Iterable<PageRange<K>>, K extends HasherInput>(
   local: T,
   peer: U
 ): DiffRange<K>[]
-// export function diff<K extends number>(local: Iterable<PageRange<K>>, peer: Iterable<PageRange<K>>): DiffRange<K>[]
 {
   const localIterator = local[Symbol.iterator]();
   const peerIterator  = peer[Symbol.iterator]();
 
-  // Any two merkle trees can be expressed as a series of overlapping page
-  // ranges, either consistent in content (hashes match), or inconsistent
-  // (hashes differ).
+  // Any two Merkle trees can be represented as a series of overlapping page ranges.
+  // These ranges can be consistent (hashes match) or inconsistent (hashes differ) in content.
   //
-  // This algorithm builds two sets of intervals - one for key ranges that are
-  // fully consistent between the two trees, and one for inconsistent ranges.
+  // This algorithm creates two sets of intervals: one for key ranges that are fully
+  // consistent between the two trees, and another for inconsistent ranges.
   //
-  // This DiffListBuilder helps construct these lists, and merges them into a
-  // final, non-overlapping, deduplicated, and minimised set of ranges that
-  // are inconsistent between trees as described above.
+  // The DiffListBuilder assists in creating these lists and merging them into a final,
+  // non-overlapping, deduplicated, and minimized set of ranges that are inconsistent between
+  // the trees as described above.
   const diffBuilder = new DiffListBuilder<K>();
 
   const localPeekable = new Peekable<PageRange<K>>(localIterator);
@@ -207,7 +96,8 @@ function recurseSubtree<K extends HasherInput>(
     const range = peer.peek();
     if (range)
     {
-      debug('requesting unevaluated subtree page');
+      debug('requesting unevaluated subtree page', { peer_page: peer });
+      // Add all the un-evaluated peer sub-tree pages to the sync list.
       diffBuilder.inconsistent(peer.peek()?.start, peer.peek()?.end);
     }
   }
@@ -235,7 +125,7 @@ function recurseDiff<K extends HasherInput>(
       return;
     }
 
-    const l = maybeAdvanceWithin(p, local);
+    let l = maybeAdvanceWithin(p, local);
     if (!l)
     {
       // If the local subtree range is a superset of the peer subtree
@@ -247,7 +137,7 @@ function recurseDiff<K extends HasherInput>(
       // spurious, causing no useful advancement of state.
       if (local.peek() && local.peek().isSupersetOf(p))
       {
-        trace('local page is a superset of peer');
+        trace('local page is a superset of peer', { peer_page: p, local_page: l });
         return;
       }
 
@@ -266,29 +156,46 @@ function recurseDiff<K extends HasherInput>(
       // will be added by the caller (recurse_subtree).
       if (end >= start)
       {
-        debug('no more local pages in subtree - requesting missing page ranges');
+        debug('no more local pages in subtree - requesting missing page ranges', { peer_page: p });
         diffBuilder.inconsistent(start, end as K);
+      }
+      else
+      {
+        trace('no more local pages in subtree', { peer_page: p });
       }
       return;
     }
 
     lastP = p;
 
-    trace('visit page');
+    trace('visit page', { peer_page: p, local_page: l });
 
-    while (local.nextIf(v => v.isSupersetOf(p)))
+    // Advance the local cursor to minimise the comparable range, in turn
+    // minimising the sync range.
+    while (true)
     {
+      const v = local.nextIf(value => value.isSupersetOf(p));
+      if (isNil(v)) break;
+
+      trace('shrink local diff range', { peer_page: p, skip_local_page: l, local_page: v });
+      l = v;
     }
 
     if (l.hash.equals(p.hash))
     {
-      debug('hash match - consistent page');
+      debug('hash match - consistent page', { peer_page: p, local_page: l });
+
+      // Record this page as fully consistent.
       diffBuilder.consistent(p.start, p.end);
+
+      // Skip visiting the pages in the subtree rooted at the current
+      // page: they're guaranteed to be consistent due to the consistent
+      // parent hash.
       skipSubtree(p, peer);
     }
     else
     {
-      debug('hash mismatch');
+      debug('hash mismatch', { peer_page: p, local_page: l });
       diffBuilder.inconsistent(p.start, p.end);
     }
 
@@ -310,17 +217,8 @@ function skipSubtree<K extends HasherInput>(subtreeRoot: PageRange<K>, iter: Pee
   }
 }
 
-// export function extractPageRange(value: PageRange<any>)
-// {
-//   return {
-//     start: value?.start,
-//     end: value?.end,
-//     hash: value?.hash?.value.asBytes()
-//   }
-// }
-
 /**
- * Return the next [`PageRange`] if it is part of the sub-tree rooted at
+ * Return the next PageRange if it is part of the sub-tree rooted at
  * `parent`.
  */
 function maybeAdvanceWithin<K extends HasherInput>(
@@ -328,11 +226,6 @@ function maybeAdvanceWithin<K extends HasherInput>(
   cursor: Peekable<PageRange<K>>
 ): PageRange<K>|null
 {
-  // console.log('x___x', {
-  //   peek: extractPageRange(cursor.peek()),
-  //   par: extractPageRange(parent)
-  // });
-
   if (cursor.peek() && parent.isSupersetOf(cursor.peek()))
   {
     return cursor.next();

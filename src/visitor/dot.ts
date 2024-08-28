@@ -20,14 +20,32 @@ interface ParentPage
   id: number;
 }
 
-type ParentType = ParentNode|ParentPage;
+export type ParentType = ParentNode|ParentPage;
 
+/**
+ * Serialise a tree into [Graphviz DOT language][dot] output to be rendered as
+ * a diagram.
+ *
+ * [dot]: https://graphviz.org/doc/info/lang.html
+ */
 export class DotVisitor<N extends number, K>
 {
   private buf: string;
+
+  /**
+   * Total number of pages visited so far (1-based)
+   */
   private pageCount: number;
-  private linkStack: ParentType[];
-  private pageBufs: string[];
+
+  /**
+   * The stack of parent node keys / page records, most recently visited last.
+   */
+  private readonly linkStack: ParentType[];
+
+  /**
+   * A set of per-page buffers, populated incrementally and merged into `buf` once complete.
+   */
+  private readonly pageBufs: string[];
 
   constructor()
   {
@@ -75,19 +93,25 @@ export class DotVisitor<N extends number, K>
   {
     let buf = this.pageBufs.pop()!;
 
+    // Remove the trailing | from the node field
     buf = buf.slice(0, -1);
 
     const me = (this.linkStack.pop() as ParentPage).id;
 
+    // If this page has a high page, it'll be visited next.
     if (page.highPage)
     {
+      // Add a high page to this record
       buf += '|<high_page>·"]\n';
+
+      // Link the high page to the referenced page
       buf += `\tpage_${me}:high_page -> page_${
         this.pageCount + 1
       }:head [fontcolor=red color=red label="high page"];\n`;
     }
     else
     {
+      // No high page, terminate record without it.
       buf += '"]\n';
     }
 
@@ -98,12 +122,14 @@ export class DotVisitor<N extends number, K>
 
   preVisitNode(node: Node<N, K>): boolean
   {
+    // Find the ID of the last visited page, which will be the parent of
+    // this node.
     const pageId = this.linkStack
       .slice()
       .reverse()
       .find((v): v is ParentPage => v.type === Parent.Page)!.id;
 
-    const name = this.cleanName(node.getKey());
+    const name = this.cleanName(node.key);
     this.linkStack.push({
       type : Parent.Node,
       value: `page_${pageId}:${name}`,
@@ -116,7 +142,8 @@ export class DotVisitor<N extends number, K>
   {
     const buf = this.pageBufs[this.pageBufs.length - 1];
 
-    const name                              = this.cleanName(node.getKey());
+    // Add this node to the page record
+    const name                              = this.cleanName(node.key);
     this.pageBufs[this.pageBufs.length - 1] = buf + `<${name}>·|${name}|`;
 
     return true;
@@ -128,6 +155,9 @@ export class DotVisitor<N extends number, K>
     return true;
   }
 
+  /**
+   * Consume this visitor, yielding the generated DOT representation.
+   */
   finalise(): string
   {
     if (this.pageBufs.length !== 0)

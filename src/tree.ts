@@ -1,10 +1,9 @@
-import { Digest, Hasher, HasherInput, RootHash, SipHasher, ValueDigest } from './digest';
-import { Page, UpsertResult } from './page';
+import { Digest, Hasher, HasherInput, RootHash, BaseHasher, ValueDigest } from './digest';
+import { Page, UpsertResult, insertIntermediatePage } from './page';
 import { Node } from './node';
 import { NodeIter } from './node-iter';
 import { PageRangeHashVisitor, Visitor } from './visitor';
 import { PageRange } from './diff';
-import { insertIntermediatePage } from './page-utils';
 import { debug } from './tracing';
 
 /**
@@ -102,8 +101,8 @@ export class MerkleSearchTree<K extends HasherInput, V extends HasherInput, N ex
 
   constructor(hasher?: Hasher<N>)
   {
-    this.hasher     = hasher || new SipHasher<16>();
-    this.treeHasher = new SipHasher<16>();
+    this.hasher     = hasher || new BaseHasher<16>();
+    this.treeHasher = new BaseHasher<16>();
     this.root       = new Page<N, K>(0, []);
     this._rootHash  = null;
   }
@@ -263,15 +262,5 @@ export class MerkleSearchTree<K extends HasherInput, V extends HasherInput, N ex
       insertIntermediatePage(this.root, key, level, valueHash);
     }
   }
-
-  /*clone(): MerkleSearchTree<K, V>
-  {
-    const tree      = new MerkleSearchTree<K, V>(this.hasher.clone());
-    tree.treeHasher = this.treeHasher.clone();
-    tree.root       = this.root;
-    tree._rootHash  = this._rootHash;
-
-    return tree;
-  }*/
 }
 

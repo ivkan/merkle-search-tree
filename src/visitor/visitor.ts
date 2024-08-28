@@ -42,11 +42,23 @@ export interface Visitor<N extends number, K>
   postVisitPage?(page: Page<N, K>): boolean;
 }
 
-// Default implementations for optional methods
-export const defaultVisitor: Partial<Visitor<any, any>> = {
-  preVisitNode : (node: Node<any, any>) => true,
-  postVisitNode: (node: Node<any, any>) => true,
-  visitPage    : (page: Page<any, any>, highPage: boolean) => true,
-  postVisitPage: (page: Page<any, any>) => true,
+export class DefaultVisitor<N extends number, K> implements Partial<Visitor<N, K>>
+{
+  preVisitNode(node: Node<N, K>): boolean
+  {
+    return true;
+  }
+  postVisitNode(node: Node<N, K>): boolean
+  {
+    return true;
+  }
+  visitPage(page: Page<N, K>, highPage: boolean): boolean
+  {
+    return true;
+  }
+  postVisitPage(page: Page<N, K>): boolean
+  {
+    return true;
+  }
 }
 

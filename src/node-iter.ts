@@ -1,5 +1,6 @@
 import { Page } from './page';
 import { Node } from './node';
+import { assert } from './tracing';
 
 export interface PageVisit<N extends number, K>
 {
@@ -85,7 +86,7 @@ export class NodeIter<N extends number, K> implements IterableIterator<Node<N, K
           //
           // If it has a lt_pointer, descend down it and visit this
           // node later.
-          const lt = n.getLtPointer();
+          const lt = n.ltPointer;
           if (lt)
           {
             // Push this page back onto the stack to be revisited.
@@ -112,7 +113,7 @@ export class NodeIter<N extends number, K> implements IterableIterator<Node<N, K
         }
         case VisitState.Descended:
           // The current index was previously descended down.
-          console.assert(n.getLtPointer() !== undefined);
+          assert(n.ltPointer !== undefined);
           // But was never yielded.
           //
           // Advance the page's node index for the next iteration, and

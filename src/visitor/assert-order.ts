@@ -43,13 +43,13 @@ export class InvariantAssertOrder<T extends Visitor<N, K>, N extends number, K>
   {
     if (this.last !== null)
     {
-      console.assert(
-        this.last < node.getKey(),
-        `visited key ${this.last} before key ${node.getKey()}`
+      assert(
+        this.last < node.key,
+        `visited key ${this.last} before key ${node.key}`
       );
     }
 
-    this.last = node.getKey();
+    this.last = node.key;
 
     return (this.inner as unknown as Visitor<N, K>).visitNode(node);
   }

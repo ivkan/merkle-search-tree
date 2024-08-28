@@ -12,9 +12,6 @@ export class InvariantAssertCount<T extends Visitor<N, K>, N extends number, K>
   private readonly inner: T
   private count: number
 
-  /**
-   * Wrap `T` in this decorator.
-   */
   constructor(inner: T)
   {
     this.inner = inner
